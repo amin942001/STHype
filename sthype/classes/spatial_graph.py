@@ -2,7 +2,7 @@ import networkx as nx
 
 
 class SpatialGraph(nx.Graph):
-    """Essentially a nx.Graph with attribute position for node and pixels for edges"""
+    """Essentially a nx.Graph with attribute position for nodes and pixels for edges"""
 
     def __init__(self, incoming_graph_data: nx.Graph, **attr):
         """Construct the Spatial Graph
@@ -31,7 +31,7 @@ class SpatialGraph(nx.Graph):
         Raises
         ------
         Exception
-            Each edge pixels should be of type list[tuple[int, int]] and its boundary should match the nodes postions of the edge
+            Each edge pixels should be of type list[tuple[int, int]] and its boundary should match the nodes positions of the edge
         """
         positions = self.positions
         undirected_graph = nx.DiGraph()
@@ -47,7 +47,7 @@ class SpatialGraph(nx.Graph):
                 and hasattr(edge_pixels[-1], "__len__")
                 and len(edge_pixels[0]) == 2
                 and len(edge_pixels[-1]) == 2
-            ), f"Edge({node1}, {node2}) pixels don't have have the format array_like[tupe[int, int]]: {edge_pixels}"
+            ), f"Edge({node1}, {node2}) pixels don't have have the format array_like[tuple[int, int]]: {edge_pixels}"
             if (
                 edge_pixels[0][0] == positions[node1][0]
                 and edge_pixels[-1][0] == positions[node2][0]
@@ -77,7 +77,7 @@ class SpatialGraph(nx.Graph):
         node1 : int
             starting node label
         node2 : int
-            ending node lable
+            ending node label
 
         Returns
         -------
@@ -97,7 +97,7 @@ class SpatialGraph(nx.Graph):
         return pixels
 
     def node_position(self, node: int) -> tuple[int, int]:
-        """Return the postion of a node
+        """Return the position of a node
 
         Parameters
         ----------
