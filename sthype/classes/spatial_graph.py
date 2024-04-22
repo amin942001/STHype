@@ -52,7 +52,7 @@ class SpatialGraph(nx.Graph):
                 and len(edge_pixels[0]) == 2
                 and len(edge_pixels[-1]) == 2
             ), (
-                f"Edge({node1}, {node2}) pixels don't have have the format"
+                f"Edge({node1}, {node2}) pixels doesn't have the format"
                 f"array_like[tuple[int, int]]: {edge_pixels}"
             )
             if (
@@ -62,6 +62,9 @@ class SpatialGraph(nx.Graph):
                 and edge_pixels[-1][1] == positions[node2][1]
             ):
                 undirected_graph.add_edge(node1, node2, pixels=edge_pixels)
+                undirected_graph.add_edge(
+                    node2, node1, pixels=list(reversed(edge_pixels))
+                )
             elif (
                 edge_pixels[0][0] == positions[node2][0]
                 and edge_pixels[-1][0] == positions[node1][0]
@@ -69,11 +72,14 @@ class SpatialGraph(nx.Graph):
                 and edge_pixels[-1][1] == positions[node1][1]
             ):
                 undirected_graph.add_edge(node2, node1, pixels=edge_pixels)
+                undirected_graph.add_edge(
+                    node1, node2, pixels=list(reversed(edge_pixels))
+                )
             else:
                 raise AssertionError(
-                    f"Edge({node1}, {node2}) pixels don't match it's node:"
+                    f"Edge({node1}, {node2}) pixels don't match it's nodes:"
                     f"\npixels: start: {edge_pixels[0]}, end: {edge_pixels[-1]}"
-                    f"\nnode: {node1}: {positions[node1]}, {node2}: {positions[node2]}"
+                    f"\nnodes: {node1}: {positions[node1]}, {node2}: {positions[node2]}"
                 )
         nx.set_node_attributes(undirected_graph, positions, "position")
         return undirected_graph
@@ -93,17 +99,7 @@ class SpatialGraph(nx.Graph):
         list[tuple[int, int]]
             the pixel list from node1 to node2
         """
-        assert self.has_edge(node1, node2), f"Edge({node1}, {node2}) doesn't exist"
-        if self.undirected_graph.has_edge(node1, node2):
-            pixels: list[tuple[int, int]] = self.undirected_graph[node1][node2][
-                "pixels"
-            ]
-        else:
-            pixels: list[tuple[int, int]] = self.undirected_graph[node2][node1][
-                "pixels"
-            ]
-            pixels = list(reversed(pixels))
-        return pixels
+        return self.undirected_graph[node1][node2]["pixels"]
 
     def node_position(self, node: int) -> tuple[int, int]:
         """Return the position of a node
@@ -118,5 +114,4 @@ class SpatialGraph(nx.Graph):
         tuple[int, int]
             the position of the node
         """
-        assert node in self, f"Node({node}) doesn't exist"
         return self.positions[node]

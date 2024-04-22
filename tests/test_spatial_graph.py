@@ -42,7 +42,7 @@ class TestSpatialGraph(unittest.TestCase):
         g.add_edges_from([(1, 2, {"pixels": [(1, 2), (6, 7), (3, 4)]})])
         nx.set_node_attributes(g, {1: (3, 4), 2: (1, 2)}, "position")
         sg = SpatialGraph(g)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(KeyError):
             sg.edge_pixels(2, 3)
 
     def test_access_non_existing_node_position(self):
@@ -51,7 +51,7 @@ class TestSpatialGraph(unittest.TestCase):
         g.add_edges_from([(1, 2, {"pixels": [(1, 2), (6, 7), (3, 4)]})])
         nx.set_node_attributes(g, {1: (3, 4), 2: (1, 2)}, "position")
         sg = SpatialGraph(g)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(KeyError):
             sg.node_position(4)
 
     def test_nodes_position_dont_match_edge_pixels(self):
