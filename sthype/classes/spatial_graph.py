@@ -1,3 +1,5 @@
+"""SpatialGraph Class"""
+
 import networkx as nx
 
 
@@ -10,7 +12,8 @@ class SpatialGraph(nx.Graph):
         Parameters
         ----------
         incoming_graph_data : nx.Graph
-            a nx.graph with attribute position for node and pixels for edges. pixels boundary need to match nodes edge position.
+            a nx.graph with attribute position for node and pixels for edges.
+            Pixels boundary need to match nodes edge position.
         """
         for node, node_data in incoming_graph_data.nodes(data=True):
             assert (
@@ -31,7 +34,8 @@ class SpatialGraph(nx.Graph):
         Raises
         ------
         Exception
-            Each edge pixels should be of type list[tuple[int, int]] and its boundary should match the nodes positions of the edge
+            Each edge pixels should be of type list[tuple[int, int]] and its boundary
+            should match the nodes positions of the edge
         """
         positions = self.positions
         undirected_graph = nx.DiGraph()
@@ -47,7 +51,10 @@ class SpatialGraph(nx.Graph):
                 and hasattr(edge_pixels[-1], "__len__")
                 and len(edge_pixels[0]) == 2
                 and len(edge_pixels[-1]) == 2
-            ), f"Edge({node1}, {node2}) pixels don't have have the format array_like[tuple[int, int]]: {edge_pixels}"
+            ), (
+                f"Edge({node1}, {node2}) pixels don't have have the format"
+                f"array_like[tuple[int, int]]: {edge_pixels}"
+            )
             if (
                 edge_pixels[0][0] == positions[node1][0]
                 and edge_pixels[-1][0] == positions[node2][0]
@@ -63,8 +70,10 @@ class SpatialGraph(nx.Graph):
             ):
                 undirected_graph.add_edge(node2, node1, pixels=edge_pixels)
             else:
-                raise Exception(
-                    f"Edge({node1}, {node2}) pixels don't match it's node:\npixels: start: {edge_pixels[0]}, end: {edge_pixels[-1]}\nnode: {node1}: {positions[node1]}, {node2}: {positions[node2]}"
+                raise AssertionError(
+                    f"Edge({node1}, {node2}) pixels don't match it's node:"
+                    f"\npixels: start: {edge_pixels[0]}, end: {edge_pixels[-1]}"
+                    f"\nnode: {node1}: {positions[node1]}, {node2}: {positions[node2]}"
                 )
         nx.set_node_attributes(undirected_graph, positions, "position")
         return undirected_graph
