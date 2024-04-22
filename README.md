@@ -45,11 +45,11 @@ pip list --format=freeze > requirements.txt
 Run all tests with :
 
 ```
-python tests
+python tests # Add -v for more details
 ```
 
-Run a specific test with (e.g _tests_spatial_graph.py_):
+Run a specific test with (e.g _test_spatial_graph.py_):
 
 ```
-python tests/tests_spatial_graph.py
+python tests/test_spatial_graph.py
 ```
