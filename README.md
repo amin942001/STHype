@@ -10,6 +10,8 @@ pip install .
 
 ### Environment
 
+#### Set up
+
 conda:
 
 ```
@@ -22,6 +24,20 @@ conda env create -f environment.yml
 python3 -m venv STHypeEnv
 source STHypeEnv/bin/activate
 pip install -r requirements.txt
+```
+
+#### Update
+
+`environment.yml` update:
+
+```
+conda env export > environment.yml
+```
+
+`requirements.txt`update:
+
+```
+pip list --format=freeze > requirements.txt
 ```
 
 ### Tests
