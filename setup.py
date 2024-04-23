@@ -1,6 +1,8 @@
+"""Setup for the sthype package"""
+
 from setuptools import find_packages, setup
 
-with open("sthype/README.md", "r") as f:
+with open("sthype/README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
@@ -12,7 +14,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/amin942001/STHype",
     license="MIT",
-    install_requires=["networkx"],
+    install_requires=["matplotlib", "networkx", "numpy"],
     extras_require={
         "dev": [],
     },
