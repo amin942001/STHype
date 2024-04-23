@@ -15,10 +15,6 @@ class SpatialGraph(nx.Graph):
             a nx.graph with attribute position for node and pixels for edges.
             Pixels boundary need to match nodes edge position.
         """
-        for node, node_data in incoming_graph_data.nodes(data=True):
-            assert (
-                "position" in node_data
-            ), f"Node({node}) doesn't have attribute position"
         super().__init__(incoming_graph_data, **attr)
         self.positions = nx.get_node_attributes(self, "position")
         self.undirected_graph = self.spatial_undirected_graph()
@@ -40,25 +36,11 @@ class SpatialGraph(nx.Graph):
         positions = self.positions
         undirected_graph = nx.DiGraph()
         for node1, node2, edge_data in self.edges(data=True):
-            assert (
-                "pixels" in edge_data
-            ), f"Edge({node1}, {node2}) doesn't have attribute pixels"
             edge_pixels = edge_data["pixels"]
-            assert (
-                hasattr(edge_pixels, "__len__")
-                and len(edge_pixels)
-                and hasattr(edge_pixels[0], "__len__")
-                and hasattr(edge_pixels[-1], "__len__")
-                and len(edge_pixels[0]) == 2
-                and len(edge_pixels[-1]) == 2
-            ), (
-                f"Edge({node1}, {node2}) pixels doesn't have the format"
-                f"array_like[tuple[int, int]]: {edge_pixels}"
-            )
             if (
                 edge_pixels[0][0] == positions[node1][0]
-                and edge_pixels[-1][0] == positions[node2][0]
                 and edge_pixels[0][1] == positions[node1][1]
+                and edge_pixels[-1][0] == positions[node2][0]
                 and edge_pixels[-1][1] == positions[node2][1]
             ):
                 undirected_graph.add_edge(node1, node2, pixels=edge_pixels)
@@ -67,8 +49,8 @@ class SpatialGraph(nx.Graph):
                 )
             elif (
                 edge_pixels[0][0] == positions[node2][0]
-                and edge_pixels[-1][0] == positions[node1][0]
                 and edge_pixels[0][1] == positions[node2][1]
+                and edge_pixels[-1][0] == positions[node1][0]
                 and edge_pixels[-1][1] == positions[node1][1]
             ):
                 undirected_graph.add_edge(node2, node1, pixels=edge_pixels)

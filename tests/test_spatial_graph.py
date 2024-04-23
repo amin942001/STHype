@@ -25,7 +25,7 @@ class TestSpatialGraph(unittest.TestCase):
         """Test if not referencing node positions raise an error"""
         g = nx.Graph()
         g.add_edges_from([(1, 2, {"pixels": [(1, 2), (6, 7), (3, 4)]})])
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(KeyError):
             SpatialGraph(g)
 
     def test_create_spatial_graph_without_edge_pixels(self):
@@ -33,7 +33,7 @@ class TestSpatialGraph(unittest.TestCase):
         g = nx.Graph()
         g.add_edges_from([(1, 2)])
         nx.set_node_attributes(g, {1: (3, 4), 2: (1, 2)}, "position")
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(KeyError):
             SpatialGraph(g)
 
     def test_access_non_existing_edge_pixels(self):
