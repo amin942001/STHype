@@ -1,6 +1,7 @@
 """SpatialGraph Class"""
 
 import networkx as nx
+from shapely import LineString, Point
 
 
 class SpatialGraph(nx.Graph):
@@ -17,6 +18,8 @@ class SpatialGraph(nx.Graph):
         """
         super().__init__(incoming_graph_data, **attr)
         self.positions = nx.get_node_attributes(self, "position")
+        for node, position in self.positions.items():
+            self.positions[node] = Point(position)
         self.undirected_graph = self.spatial_undirected_graph()
 
     def spatial_undirected_graph(self) -> nx.DiGraph:
@@ -36,31 +39,22 @@ class SpatialGraph(nx.Graph):
         positions = self.positions
         undirected_graph = nx.DiGraph()
         for node1, node2, edge_data in self.edges(data=True):
-            edge_pixels = edge_data["pixels"]
-            if (
-                edge_pixels[0][0] == positions[node1][0]
-                and edge_pixels[0][1] == positions[node1][1]
-                and edge_pixels[-1][0] == positions[node2][0]
-                and edge_pixels[-1][1] == positions[node2][1]
+            edge_pixels = LineString(edge_data["pixels"])
+            start_point, end_point = edge_pixels.boundary.geoms
+            if start_point.equals(positions[node1]) and end_point.equals(
+                positions[node2]
             ):
                 undirected_graph.add_edge(node1, node2, pixels=edge_pixels)
-                undirected_graph.add_edge(
-                    node2, node1, pixels=list(reversed(edge_pixels))
-                )
-            elif (
-                edge_pixels[0][0] == positions[node2][0]
-                and edge_pixels[0][1] == positions[node2][1]
-                and edge_pixels[-1][0] == positions[node1][0]
-                and edge_pixels[-1][1] == positions[node1][1]
+                undirected_graph.add_edge(node2, node1, pixels=edge_pixels.reverse())
+            elif start_point.equals(positions[node2]) and end_point.equals(
+                positions[node1]
             ):
                 undirected_graph.add_edge(node2, node1, pixels=edge_pixels)
-                undirected_graph.add_edge(
-                    node1, node2, pixels=list(reversed(edge_pixels))
-                )
+                undirected_graph.add_edge(node1, node2, pixels=edge_pixels.reverse())
             else:
                 raise AssertionError(
                     f"Edge({node1}, {node2}) pixels don't match it's nodes:"
-                    f"\npixels: start: {edge_pixels[0]}, end: {edge_pixels[-1]}"
+                    f"\npixels: start: {start_point}, end: {end_point}"
                     f"\nnodes: {node1}: {positions[node1]}, {node2}: {positions[node2]}"
                 )
         nx.set_node_attributes(undirected_graph, positions, "position")

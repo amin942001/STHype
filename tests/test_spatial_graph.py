@@ -3,6 +3,7 @@
 import unittest
 
 import networkx as nx
+from shapely import LineString, Point
 
 from sthype import SpatialGraph
 from sthype.plot import plot_spatial_graph
@@ -19,9 +20,13 @@ class TestSpatialGraph(unittest.TestCase):
 
     def test_create_spatial_graph(self):
         """Test SpatialGraph functions"""
-        self.assertEqual(self.spatial_graph.edge_pixels(1, 2), [(3, 4), (6, 7), (1, 2)])
-        self.assertEqual(self.spatial_graph.edge_pixels(2, 1), [(1, 2), (6, 7), (3, 4)])
-        self.assertEqual(self.spatial_graph.node_position(1), (3, 4))
+        self.assertEqual(
+            self.spatial_graph.edge_pixels(1, 2), LineString([(3, 4), (6, 7), (1, 2)])
+        )
+        self.assertEqual(
+            self.spatial_graph.edge_pixels(2, 1), LineString([(1, 2), (6, 7), (3, 4)])
+        )
+        self.assertEqual(self.spatial_graph.node_position(1), Point(3, 4))
 
     def test_create_spatial_graph_without_node_positions(self):
         """Test if not referencing node positions raise an error"""
