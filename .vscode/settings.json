@@ -1,5 +1,30 @@
 {
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 10000,
+    "editor.formatOnSave": true,
+    "editor.renderWhitespace": "boundary",
+    "editor.guides.bracketPairs": "active",
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "isort.args": [
+        "--profile",
+        "black"
+    ],
+    "autoDocstring.docstringFormat": "numpy",
     "cSpell.words": [
-        "sthype"
+        "hypergraph",
+        "isort",
+        "networkx",
+        "numpy",
+        "Pylint",
+        "sthype",
+        "venv"
     ]
 }
