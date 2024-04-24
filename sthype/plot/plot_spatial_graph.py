@@ -11,8 +11,8 @@ from .. import SpatialGraph
 
 def plot_spatial_graph(
     spatial_graph: SpatialGraph,
-    add_points: bool = False,
     region: tuple[tuple[int, int], tuple[int, int]] | None = None,
+    add_nodes: bool = False,
 ) -> tuple[PathPatch, Line2D] | PathPatch:
     """Plot a SpatialGraph
 
@@ -20,13 +20,15 @@ def plot_spatial_graph(
     ----------
     spatial_graph : SpatialGraph
         The SpatialGraph to plot
-    plot : bool, optional
-        If you don't want to plot set to False, by default True
+    region : tuple[tuple[int, int], tuple[int, int]] | None, optional
+        Region to plot if not None, by default None
+    add_nodes : bool, optional
+        plot nodes label if region is given, by default False
 
     Returns
     -------
-    Figure
-        The Figure representing the SpatialGraph
+    tuple[PathPatch, Line2D] | PathPatch
+        The PathPatch representing the SpatialGraph
     """
     _, ax = plt.subplots()
 
@@ -47,7 +49,15 @@ def plot_spatial_graph(
             )
         )
         lines = [line for line in lines if line.intersects(region)]
+        if add_nodes:
+            nodes = [
+                (label, position)
+                for label, position in spatial_graph.positions.items()
+                if position.intersects(region)
+            ]
+            for label, position in nodes:
+                ax.annotate(label, position.coords[0])
 
     lines = MultiLineString(lines)
 
-    return plot_line(lines, ax, add_points=add_points)
+    return plot_line(lines, ax, add_points=False)

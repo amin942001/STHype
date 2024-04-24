@@ -20,6 +20,7 @@ class SpatialGraph(nx.Graph):
         self.positions = nx.get_node_attributes(self, "position")
         for node, position in self.positions.items():
             self.positions[node] = Point(position)
+        self.positions: dict[int, Point]
         self.undirected_graph = self.spatial_undirected_graph()
 
     def spatial_undirected_graph(self) -> nx.DiGraph:
