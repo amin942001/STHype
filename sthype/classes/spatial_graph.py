@@ -60,7 +60,7 @@ class SpatialGraph(nx.Graph):
         nx.set_node_attributes(undirected_graph, positions, "position")
         return undirected_graph
 
-    def edge_pixels(self, node1: int, node2: int) -> list[tuple[int, int]]:
+    def edge_pixels(self, node1: int, node2: int) -> LineString:
         """Return the pixel list from node1 to node2
 
         Parameters
@@ -77,7 +77,7 @@ class SpatialGraph(nx.Graph):
         """
         return self.undirected_graph[node1][node2]["pixels"]
 
-    def node_position(self, node: int) -> tuple[int, int]:
+    def node_position(self, node: int) -> Point:
         """Return the position of a node
 
         Parameters
