@@ -19,8 +19,11 @@
     ],
     "autoDocstring.docstringFormat": "numpy",
     "cSpell.words": [
+        "argmax",
+        "argmin",
         "hypergraph",
         "isort",
+        "ndarray",
         "networkx",
         "numpy",
         "Pylint",
