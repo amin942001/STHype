@@ -25,6 +25,8 @@
         "numpy",
         "Pylint",
         "sthype",
-        "venv"
+        "venv",
+        "xlim",
+        "ylim"
     ]
 }
