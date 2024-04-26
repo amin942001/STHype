@@ -31,5 +31,9 @@
         "venv",
         "xlim",
         "ylim"
-    ]
+    ],
+    "flake8.args": [
+        "--max-line-length=88",
+        "--ignore=E203,E701",
+     ]
 }

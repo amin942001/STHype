@@ -56,7 +56,7 @@ python tests/test_spatial_graph.py # Add -v for more details
 
 ### Formatting
 
-For linting use [Pylint](https://marketplace.visualstudio.com/items?itemName=ms-python.pylint) and [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint).
+For linting use [Flake8](https://marketplace.visualstudio.com/items?itemName=ms-python.flake8) and [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint).
 
 For auto formatting use [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter) and [isort](https://marketplace.visualstudio.com/items?itemName=ms-python.isort).
 
