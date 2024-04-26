@@ -177,7 +177,7 @@ def segmented_graph_activation(
             xc -= min_x
             yc -= min_y
 
-            new_center, min_dist = closest_point_square([xc, yc], coords)
+            new_center, min_dist = closest_point_square((xc, yc), coords)
             segmented_graph[node1][node2]["centers_distance"].append(min_dist)
             if min_dist < threshold**2:
                 segmented_graph[node1][node2]["centers"].append(
