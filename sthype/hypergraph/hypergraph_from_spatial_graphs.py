@@ -1,9 +1,8 @@
 """Functions to create an hypergraph from time correlated graphs"""
 
 import networkx as nx
-import numpy as np
-from scipy import sparse
-from shapely import LineString, Point
+from shapely import MultiLineString
+from shapely.ops import nearest_points
 
 from .. import SpatialGraph
 
@@ -40,7 +39,7 @@ def hypergraph_from_spatial_graphs(
     final_graph = spatial_graphs[-1]
     segmented_graph = graph_segmentation(final_graph, segments_length)
     segmented_graph = segmented_graph_activation(
-        segmented_graph, spatial_graphs, segments_length, threshold
+        segmented_graph, spatial_graphs, threshold
     )
 
     return segmented_graph
@@ -94,32 +93,9 @@ def graph_segmentation(
     return graph_segmented
 
 
-def closest_point_square(
-    point: tuple[int, int], points: np.ndarray
-) -> tuple[np.ndarray, float]:
-    """Closest point and distance from point to points
-
-    Parameters
-    ----------
-    point : tuple[int, int]
-        The point
-    points : np.ndarray
-        The list of point
-
-    Returns
-    -------
-    tuple[np.ndarray, float]
-        The closest point to point and the distance between them
-    """
-    dist_square = np.sum((points - point) ** 2, axis=1)
-    min_index = np.argmin(dist_square)
-    return points[min_index], dist_square[min_index]
-
-
 def segmented_graph_activation(
     segmented_graph: nx.Graph,
     spatial_graphs: list[SpatialGraph],
-    segments_length: int = 5,
     threshold: float = 10,
 ) -> nx.Graph:
     """Return (in place) the segmented graph with activation time
@@ -144,61 +120,27 @@ def segmented_graph_activation(
     for node1, node2 in segmented_graph.edges:
         segmented_graph[node1][node2]["centers"] = []
         segmented_graph[node1][node2]["centers_distance"] = []
-    for spatial_graph in reversed(spatial_graphs):
-        rows = []
-        cols = []
-        for _, _, edge_data in spatial_graph.edges(data=True):
-            pixels = edge_data["pixels"]
-            row, col = zip(*pixels)
-            rows.extend(row)
-            cols.extend(col)
-
-        data = np.ones(len(rows))
-        points_matrix = sparse.csr_matrix((data, (rows, cols)))
+        segmented_graph[node1][node2]["activation"] = len(spatial_graphs)
+    for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
+        skeleton = []
+        for node1, node2 in spatial_graph.edges:
+            skeleton.append(spatial_graph.edge_pixels(node1, node2))
+        skeleton = MultiLineString(skeleton)
 
         for node1, node2, edge_data in segmented_graph.edges(data=True):
             if edge_data["centers"]:
-                xc, yc = edge_data["centers"][-1].coords[0]
+                center = edge_data["centers"][-1]
             else:
-                xc, yc = edge_data["center"].coords[0]
-            xc, yc = int(xc), int(yc)
+                center = edge_data["center"]
 
-            min_x, max_x = max(0, xc - 4 * segments_length), xc + 4 * segments_length
-            min_y, max_y = max(0, yc - 4 * segments_length), yc + 4 * segments_length
-            coords = points_matrix[min_x:max_x, min_y:max_y].nonzero()
-            coords = np.column_stack(coords)
-            if not coords.shape[0]:
-                segmented_graph[node1][node2]["centers_distance"].append(
-                    32 * (segments_length**2)
-                )
-                segmented_graph[node1][node2]["centers"].append(Point(xc, yc))
-                continue
+            closest_point = nearest_points(center, skeleton)[1]
+            distance = center.distance(closest_point)
 
-            xc -= min_x
-            yc -= min_y
-
-            new_center, min_dist = closest_point_square((xc, yc), coords)
-            segmented_graph[node1][node2]["centers_distance"].append(min_dist)
-            if min_dist < threshold**2:
-                segmented_graph[node1][node2]["centers"].append(
-                    Point(new_center + np.array([min_x, min_y]))
-                )
+            segmented_graph[node1][node2]["centers_distance"].append(distance)
+            if distance < threshold:
+                segmented_graph[node1][node2]["centers"].append(closest_point)
+                segmented_graph[node1][node2]["activation"] = time
             else:
-                segmented_graph[node1][node2]["centers"].append(
-                    Point(xc + min_x, yc + min_y)
-                )
-    for node1, node2 in segmented_graph.edges:
-        segmented_graph[node1][node2]["centers"].reverse()
-        segmented_graph[node1][node2]["centers_distance"].reverse()
-        centers_distance_array = np.array(
-            segmented_graph[node1][node2]["centers_distance"]
-        )
-        activated = np.where(centers_distance_array < threshold**2, 1, 0)
-        activation = np.argmax(activated)
-
-        segmented_graph[node1][node2]["centers"] = LineString(
-            segmented_graph[node1][node2]["centers"]
-        )
-        segmented_graph[node1][node2]["activation"] = activation
+                segmented_graph[node1][node2]["centers"].append(center)
 
     return segmented_graph
