@@ -23,5 +23,5 @@ jobs:
       - name: flake8
         uses: py-actions/flake8@v2
         with:
-          ignore: "E203"
+          ignore: "E203,E701"
           max-line-length: "88"
