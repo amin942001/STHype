@@ -18,5 +18,5 @@ setup(
     extras_require={
         "dev": ["flake8-bugbear", "pytest", "flake8", "black"],
     },
-    python_requires=">3.7",
+    python_requires=">3.9",
 )
