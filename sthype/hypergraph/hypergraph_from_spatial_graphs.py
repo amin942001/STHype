@@ -1,7 +1,7 @@
 """Functions to create an hypergraph from time correlated graphs"""
 
 import networkx as nx
-from shapely import MultiLineString
+from shapely import MultiLineString, Point
 from shapely.ops import nearest_points
 
 from .. import SpatialGraph
@@ -11,7 +11,7 @@ def hypergraph_from_spatial_graphs(
     spatial_graphs: list[SpatialGraph],
     dates: list[str | int],
     segments_length: float = 5,
-    threshold: int = 10,
+    threshold: float = 10,
 ):
     """Create an hypergraph using SpatialGraphs
 
@@ -64,17 +64,20 @@ def graph_segmentation(
         Edge have attribute center and there initial edge as a set : {node1, node2}.
         Node have attribute position
     """
-    label = max(spatial_graph.nodes) + 1
+    label: int = max(spatial_graph.nodes) + 1
     graph_segmented = nx.Graph()
 
-    nodes_position = {}
+    nodes_position: dict[int, Point] = {}
+
+    node1: int
+    node2: int
     for node1, node2 in spatial_graph.edges:
         pixels = spatial_graph.edge_pixels(node1, node2)
-        new_nodes = [
+        new_nodes: list[Point] = [
             pixels.line_interpolate_point(i * segments_length)
             for i in range(int(-(-pixels.length // segments_length) + 1))
         ]
-        new_edges_center = [
+        new_edges_center: list[Point] = [
             pixels.line_interpolate_point((i + 0.5) * segments_length)
             for i in range(int(-(-pixels.length // segments_length)))
         ]
@@ -119,20 +122,23 @@ def segmented_graph_activation(
         segmented_graph[node1][node2]["centers"] = []
         segmented_graph[node1][node2]["centers_distance"] = []
         segmented_graph[node1][node2]["activation"] = len(spatial_graphs)
+
     for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
-        skeleton = []
-        for node1, node2 in spatial_graph.edges:
-            skeleton.append(spatial_graph.edge_pixels(node1, node2))
-        skeleton = MultiLineString(skeleton)
+        skeleton = MultiLineString(
+            [
+                spatial_graph.edge_pixels(node1, node2)
+                for node1, node2 in spatial_graph.edges
+            ]
+        )
 
         for node1, node2, edge_data in segmented_graph.edges(data=True):
             if edge_data["centers"]:
-                center = edge_data["centers"][-1]
+                center: Point = edge_data["centers"][-1]
             else:
-                center = edge_data["center"]
+                center: Point = edge_data["center"]
 
-            closest_point = nearest_points(center, skeleton)[1]
-            distance = center.distance(closest_point)
+            closest_point: Point = nearest_points(center, skeleton)[1]
+            distance: float = center.distance(closest_point)
 
             segmented_graph[node1][node2]["centers_distance"].append(distance)
             if distance < threshold:

@@ -1,5 +1,7 @@
 """SpatialGraph Class"""
 
+from typing import Sequence
+
 import networkx as nx
 from shapely import LineString, Point
 
@@ -17,10 +19,14 @@ class SpatialGraph(nx.Graph):
             Pixels boundary need to match nodes edge position.
         """
         super().__init__(incoming_graph_data, **attr)
-        self.positions = nx.get_node_attributes(self, "position")
-        for node, position in self.positions.items():
-            self.positions[node] = Point(position)
-        self.positions: dict[int, Point]
+
+        node_positions: dict[int, Sequence[float]] = nx.get_node_attributes(
+            self, "position"
+        )
+        self.positions: dict[int, Point] = {
+            node: Point(position) for node, position in node_positions.items()
+        }
+
         self.undirected_graph = self.spatial_undirected_graph()
 
     def spatial_undirected_graph(self) -> nx.DiGraph:
@@ -39,9 +45,16 @@ class SpatialGraph(nx.Graph):
         """
         positions = self.positions
         undirected_graph = nx.DiGraph()
+
+        node1: int
+        node2: int
         for node1, node2, edge_data in self.edges(data=True):
-            edge_pixels = LineString(edge_data["pixels"])
-            start_point, end_point = edge_pixels.boundary.geoms
+            pixels: Sequence[Sequence[float]] = edge_data["pixels"]
+            edge_pixels = LineString(pixels)
+
+            boundaries: tuple[Point, Point] = edge_pixels.boundary.geoms
+            start_point, end_point = boundaries
+
             if start_point.equals(positions[node1]) and end_point.equals(
                 positions[node2]
             ):
@@ -58,6 +71,7 @@ class SpatialGraph(nx.Graph):
                     f"\npixels: start: {start_point}, end: {end_point}"
                     f"\nnodes: {node1}: {positions[node1]}, {node2}: {positions[node2]}"
                 )
+
         nx.set_node_attributes(undirected_graph, positions, "position")
         return undirected_graph
 
