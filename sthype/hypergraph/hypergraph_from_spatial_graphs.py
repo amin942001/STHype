@@ -10,7 +10,7 @@ from .. import SpatialGraph
 def hypergraph_from_spatial_graphs(
     spatial_graphs: list[SpatialGraph],
     dates: list[str | int],
-    segments_length: int = 5,
+    segments_length: float = 5,
     threshold: int = 10,
 ):
     """Create an hypergraph using SpatialGraphs
@@ -21,7 +21,7 @@ def hypergraph_from_spatial_graphs(
         List of SpatialGraph used to create the hypergraph
     dates : list[str  |  int]
         Date of the graphs used to calculate growth speed...
-    segments_length : int, optional
+    segments_length : float, optional
         length of the subdivision of edges, by default 5
     threshold : int, optional
         The threshold at which you can say that two points are the same, by default 10
@@ -46,7 +46,7 @@ def hypergraph_from_spatial_graphs(
 
 
 def graph_segmentation(
-    spatial_graph: SpatialGraph, segments_length: int = 5
+    spatial_graph: SpatialGraph, segments_length: float = 5
 ) -> nx.Graph:
     """Cut edges of a SpatialGraph into edge of size segments_length
 
@@ -54,7 +54,7 @@ def graph_segmentation(
     ----------
     spatial_graph : SpatialGraph
         The SpatialGraph to segment
-    segments_length : int, optional
+    segments_length : float, optional
         Length of the subdivision of edges, by default 5
 
     Returns
@@ -107,8 +107,6 @@ def segmented_graph_activation(
         The graph where the activation time should be calculated
     spatial_graphs : list[SpatialGraph]
         The SpatialGraphs representing segmented_graph through time
-    segments_length : int, optional
-        Length of the subdivision of edges, by default 5
     threshold : float, optional
         The threshold at which you can say that two points are the same, by default 10
 
