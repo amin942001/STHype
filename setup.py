@@ -16,7 +16,7 @@ setup(
     license="MIT",
     install_requires=["matplotlib", "networkx", "numpy", "shapely"],
     extras_require={
-        "dev": [],
+        "dev": ["flake8-bugbear", "pytest", "flake8", "black"],
     },
     python_requires=">3.7",
 )
