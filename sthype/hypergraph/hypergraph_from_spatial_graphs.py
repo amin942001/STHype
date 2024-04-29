@@ -33,7 +33,7 @@ def hypergraph_from_spatial_graphs(
         The SpatialTemporalHypergraph of the SpatialGraphs
     """
     spatial_graphs = [
-        spatial_graphs for _, spatial_graphs in sorted(zip(dates, spatial_graphs))
+        spatial_graph for _, spatial_graph in sorted(zip(dates, spatial_graphs))
     ]
     dates = list(sorted(dates))
 
