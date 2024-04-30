@@ -39,10 +39,10 @@ def hypergraph_from_spatial_graphs(
     final_graph = spatial_graphs[-1]
     segmented_graph = graph_segmentation(final_graph, segments_length)
     segmented_graph = segmented_graph_activation(
-        segmented_graph, spatial_graphs, threshold
+        segmented_graph, spatial_graphs, timestamps, threshold
     )
 
-    return HyperGraph(segmented_graph, timestamps)
+    return HyperGraph(segmented_graph)
 
 
 def graph_segmentation(
@@ -99,6 +99,7 @@ def graph_segmentation(
 def segmented_graph_activation(
     segmented_graph: nx.Graph,
     spatial_graphs: list[SpatialGraph],
+    timestamps: list[int],
     threshold: float = 10,
 ) -> nx.Graph:
     """Return (in place) the segmented graph with activation time
@@ -121,7 +122,9 @@ def segmented_graph_activation(
     for node1, node2 in segmented_graph.edges:
         segmented_graph[node1][node2]["centers"] = []
         segmented_graph[node1][node2]["centers_distance"] = []
-        segmented_graph[node1][node2]["activation"] = len(spatial_graphs)
+        segmented_graph[node1][node2]["activation"] = timestamps[
+            len(spatial_graphs) - 1
+        ]
 
     for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
         skeleton = MultiLineString(
@@ -143,7 +146,7 @@ def segmented_graph_activation(
             segmented_graph[node1][node2]["centers_distance"].append(distance)
             if distance < threshold:
                 segmented_graph[node1][node2]["centers"].append(closest_point)
-                segmented_graph[node1][node2]["activation"] = time
+                segmented_graph[node1][node2]["activation"] = timestamps[time]
             else:
                 segmented_graph[node1][node2]["centers"].append(center)
 

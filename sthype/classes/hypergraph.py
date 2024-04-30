@@ -14,7 +14,7 @@ class HyperGraph(nx.Graph):
         SegmentedGraph with activation time and centers attributes to the edges
     """
 
-    def __init__(self, incoming_graph_data=None, timestamps=None, **attr):
+    def __init__(self, incoming_graph_data=None, **attr):
         """Init an hypergraph
 
         Parameters
@@ -29,7 +29,6 @@ class HyperGraph(nx.Graph):
             timestamp of each activation time
         """
         super().__init__(incoming_graph_data, **attr)
-        self.timestamps = timestamps
         self.positions: dict[int, Point] = nx.get_node_attributes(
             incoming_graph_data, "position"
         )
@@ -82,8 +81,7 @@ class HyperGraph(nx.Graph):
             start, end = edge.split(",")
             start, end = int(start), int(end)
             timestamps_segments = [
-                self.timestamps[self[node1][node2]["activation"]]
-                for node1, node2 in segments
+                self[node1][node2]["activation"] for node1, node2 in segments
             ]
             slope, constant = np.polyfit(
                 np.arange(len(timestamps_segments)), timestamps_segments, 1
