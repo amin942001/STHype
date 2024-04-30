@@ -9,7 +9,7 @@ from .. import HyperGraph, SpatialGraph
 
 def hypergraph_from_spatial_graphs(
     spatial_graphs: list[SpatialGraph],
-    dates: list[str | int],
+    timestamps: list[int],
     segments_length: float = 5,
     threshold: float = 10,
 ) -> HyperGraph:
@@ -19,8 +19,8 @@ def hypergraph_from_spatial_graphs(
     ----------
     spatial_graphs : list[SpatialGraph]
         List of SpatialGraph used to create the hypergraph
-    dates : list[str  |  int]
-        Date of the graphs used to calculate growth speed...
+    timestamps : list[str  |  int]
+        Timestamps of the graphs used to calculate growth speed, ...
     segments_length : float, optional
         length of the subdivision of edges, by default 5
     threshold : int, optional
@@ -32,9 +32,9 @@ def hypergraph_from_spatial_graphs(
         The SpatialTemporalHypergraph of the SpatialGraphs
     """
     spatial_graphs = [
-        spatial_graph for _, spatial_graph in sorted(zip(dates, spatial_graphs))
+        spatial_graph for _, spatial_graph in sorted(zip(timestamps, spatial_graphs))
     ]
-    dates = list(sorted(dates))
+    timestamps = list(sorted(timestamps))
 
     final_graph = spatial_graphs[-1]
     segmented_graph = graph_segmentation(final_graph, segments_length)
@@ -42,7 +42,7 @@ def hypergraph_from_spatial_graphs(
         segmented_graph, spatial_graphs, threshold
     )
 
-    return HyperGraph(segmented_graph)
+    return HyperGraph(segmented_graph, timestamps)
 
 
 def graph_segmentation(
