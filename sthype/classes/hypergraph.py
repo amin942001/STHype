@@ -5,6 +5,25 @@ import numpy as np
 from shapely import Point
 
 
+def match_edges(
+    in_edges: list[tuple[int, int, int]], out_edges: list[tuple[int, int, int]]
+) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+    if not in_edges or not out_edges:
+        return []
+
+    start = in_edges[0][1:3]
+    end = out_edges[0][1:3]
+    if end == start:
+        if len(out_edges) == 1:
+            return []
+        end = out_edges[1][1:3]
+    matched = (start, end)
+    return [matched] + match_edges(
+        [edge for edge in in_edges if edge[1:3] not in matched],
+        [edge for edge in out_edges if edge[1:3] not in matched],
+    )
+
+
 class HyperGraph(nx.Graph):
     """HyperGraph
 
@@ -36,6 +55,7 @@ class HyperGraph(nx.Graph):
             self.load_edges_segments()
         )
         self.edges_graph: nx.DiGraph = self.load_edge_graph()
+        self.load_hyphaes()
 
     def load_edges_segments(self) -> dict[str, list[tuple[int, int]]]:
         edges_segments: dict[str, list[tuple[int, int]]] = {}
@@ -86,7 +106,7 @@ class HyperGraph(nx.Graph):
             slope, constant = np.polyfit(
                 np.arange(len(timestamps_segments)), timestamps_segments, 1
             )
-            if slope >= 0:
+            if slope > 0:
                 visited_edge.add(edge)
                 edges_graph.add_edge(
                     start,
@@ -97,9 +117,51 @@ class HyperGraph(nx.Graph):
                 )
                 for index, (node1, node2) in enumerate(segments):
                     self[node1][node2]["activation"] = slope * index + constant
+            elif slope == 0:
+                visited_edge.add(edge)
+                edges_graph.add_edge(
+                    start,
+                    end,
+                    segments=segments,
+                    begin_timestamp=constant,
+                    end_timestamp=constant,
+                )
+                for node1, node2 in segments:
+                    self[node1][node2]["activation"] = constant
 
         nx.set_node_attributes(edges_graph, self.positions, "position")
         return edges_graph
+
+    def load_hyphaes(self):
+        for node in self.edges_graph:
+            in_edges = [
+                (edge_data["end_timestamp"], node1, node2)
+                for node1, node2, edge_data in self.edges_graph.in_edges(
+                    node, data=True
+                )
+            ]
+            out_edges = [
+                (edge_data["begin_timestamp"], node1, node2)
+                for node1, node2, edge_data in self.edges_graph.out_edges(
+                    node, data=True
+                )
+            ]
+            matches = match_edges(sorted(in_edges), sorted(out_edges))
+            for edge_in, edge_out in matches:
+                self.edges_graph[edge_in[0]][edge_in[1]]["main_son"] = edge_out
+                self.edges_graph[edge_out[0]][edge_out[1]]["parent"] = edge_in
+
+        label = 0
+        for node1, node2, edge_data in self.edges_graph.edges(data=True):
+            if "parent" not in edge_data:
+                node_begin, node_end = node1, node2
+                self.edges_graph[node_begin][node_end]["hyphae"] = label
+                while "main_son" in self.edges_graph[node_begin][node_end]:
+                    node_begin, node_end = self.edges_graph[node_begin][node_end][
+                        "main_son"
+                    ]
+                    self.edges_graph[node_begin][node_end]["hyphae"] = label
+                label += 1
 
     def get_edge_segments(self, node1: int, node2: int) -> list[tuple[int, int]]:
         return self.edges_segments[f"{node1},{node2}"]
