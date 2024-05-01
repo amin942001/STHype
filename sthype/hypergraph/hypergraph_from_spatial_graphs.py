@@ -1,5 +1,9 @@
 """Functions to create an hypergraph from time correlated graphs"""
 
+import time as tm
+from functools import partial
+from multiprocessing import Pool
+
 import networkx as nx
 from shapely import MultiLineString, Point
 from shapely.ops import nearest_points
@@ -103,6 +107,10 @@ def graph_segmentation(
     return graph_segmented
 
 
+def closest_point_from_skeleton(center: Point, skeleton: MultiLineString) -> Point:
+    return nearest_points(center, skeleton)[1]
+
+
 def segmented_graph_activation(
     segmented_graph: nx.Graph,
     spatial_graphs: list[SpatialGraph],
@@ -136,8 +144,10 @@ def segmented_graph_activation(
             len(spatial_graphs) - 1
         ]
 
+    d = tm.perf_counter()
     for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
         if verbose > 0:
+            print(tm.perf_counter() - d)
             print(f"Comparing with graph {time}")
         skeleton = MultiLineString(
             [
@@ -146,13 +156,22 @@ def segmented_graph_activation(
             ]
         )
 
-        for node1, node2, edge_data in segmented_graph.edges(data=True):
+        centers: list[Point] = []
+        for _, _, edge_data in segmented_graph.edges(data=True):
             if edge_data["centers"]:
                 center: Point = edge_data["centers"][-1]
             else:
                 center: Point = edge_data["center"]
+            centers.append(center)
 
-            closest_point: Point = nearest_points(center, skeleton)[1]
+        with Pool() as p:
+            closest_points: list[Point] = p.map(
+                partial(closest_point_from_skeleton, skeleton=skeleton), centers
+            )
+
+        for center, closest_point, (node1, node2) in zip(
+            centers, closest_points, segmented_graph.edges
+        ):
             distance: float = center.distance(closest_point)
 
             segmented_graph[node1][node2]["centers_distance"].append(distance)
