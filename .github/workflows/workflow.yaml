@@ -21,7 +21,6 @@ jobs:
       - name: flake8
         uses: py-actions/flake8@v2
         with:
-          ignore: "E203,E501,E701"
-          select: "B950"
+          ignore: "E203,E701"
           max-line-length: "80"
           plugins: "flake8-bugbear"
