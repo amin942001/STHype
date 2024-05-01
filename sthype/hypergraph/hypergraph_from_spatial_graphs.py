@@ -12,6 +12,7 @@ def hypergraph_from_spatial_graphs(
     timestamps: list[int],
     segments_length: float = 5,
     threshold: float = 10,
+    verbose: int = 0,
 ) -> HyperGraph:
     """Create an hypergraph using SpatialGraphs
 
@@ -25,6 +26,8 @@ def hypergraph_from_spatial_graphs(
         length of the subdivision of edges, by default 5
     threshold : int, optional
         The threshold at which you can say that two points are the same, by default 10
+    verbose : int, optional
+        If verbose greater than 0, print some messages, by default 0
 
     Returns
     -------
@@ -37,9 +40,13 @@ def hypergraph_from_spatial_graphs(
     timestamps = list(sorted(timestamps))
 
     final_graph = spatial_graphs[-1]
+    if verbose > 0:
+        print("Segmentation")
     segmented_graph = graph_segmentation(final_graph, segments_length)
+    if verbose > 0:
+        print("Segment Activation")
     segmented_graph = segmented_graph_activation(
-        segmented_graph, spatial_graphs, timestamps, threshold
+        segmented_graph, spatial_graphs, timestamps, threshold, verbose
     )
 
     return HyperGraph(segmented_graph)
@@ -101,6 +108,7 @@ def segmented_graph_activation(
     spatial_graphs: list[SpatialGraph],
     timestamps: list[int],
     threshold: float = 10,
+    verbose: int = 0,
 ) -> nx.Graph:
     """Return (in place) the segmented graph with activation time
     and the shifted center of the edges through the list of SpatialGraph
@@ -113,6 +121,8 @@ def segmented_graph_activation(
         The SpatialGraphs representing segmented_graph through time
     threshold : float, optional
         The threshold at which you can say that two points are the same, by default 10
+    verbose : int, optional
+        If verbose greater than 0, print some messages, by default 0
 
     Returns
     -------
@@ -127,6 +137,8 @@ def segmented_graph_activation(
         ]
 
     for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
+        if verbose > 0:
+            print(f"Comparing with graph {time}")
         skeleton = MultiLineString(
             [
                 spatial_graph.edge_pixels(node1, node2)
