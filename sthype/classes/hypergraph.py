@@ -55,7 +55,7 @@ class HyperGraph(nx.Graph):
             self.load_edges_segments()
         )
         self.edges_graph: nx.DiGraph = self.load_edge_graph()
-        self.load_hyphaes()
+        # self.load_hyphaes()
 
     def load_edges_segments(self) -> dict[str, list[tuple[int, int]]]:
         edges_segments: dict[str, list[tuple[int, int]]] = {}
@@ -80,7 +80,7 @@ class HyperGraph(nx.Graph):
                 ][0]
                 segments.remove(next_segment)
                 if next_segment[0] != searched_node:
-                    next_segment[::-1]
+                    next_segment = next_segment[::-1]
                 ordered_segments.append(next_segment)
                 searched_node = next_segment[1]
 
@@ -103,9 +103,12 @@ class HyperGraph(nx.Graph):
             timestamps_segments = [
                 self[node1][node2]["activation"] for node1, node2 in segments
             ]
-            slope, constant = np.polyfit(
-                np.arange(len(timestamps_segments)), timestamps_segments, 1
-            )
+            if len(timestamps_segments) == 1:
+                slope, constant = 0, timestamps_segments[0]
+            else:
+                slope, constant = np.polyfit(
+                    np.arange(len(timestamps_segments)), timestamps_segments, 1
+                )
             if slope > 0:
                 visited_edge.add(edge)
                 edges_graph.add_edge(
