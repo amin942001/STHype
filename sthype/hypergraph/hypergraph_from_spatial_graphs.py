@@ -14,7 +14,7 @@ from .. import HyperGraph, SpatialGraph
 def hypergraph_from_spatial_graphs(
     spatial_graphs: list[SpatialGraph],
     timestamps: list[int],
-    segments_length: float = 5,
+    segments_length: float = 10,
     threshold: float = 10,
     verbose: int = 0,
 ) -> HyperGraph:
@@ -50,7 +50,12 @@ def hypergraph_from_spatial_graphs(
     if verbose > 0:
         print("Segment Activation")
     segmented_graph = segmented_graph_activation(
-        segmented_graph, spatial_graphs, timestamps, threshold, verbose
+        segmented_graph,
+        spatial_graphs,
+        timestamps,
+        threshold,
+        segments_length / 2,
+        verbose,
     )
 
     return HyperGraph(segmented_graph)
@@ -107,6 +112,20 @@ def graph_segmentation(
     return graph_segmented
 
 
+def segmented_skeleton(
+    spatial_graph: SpatialGraph, skeleton_segmentation_length: float = 10
+) -> MultiLineString:
+    lines: list[list[Point]] = []
+    for node1, node2 in spatial_graph.edges:
+        pixels = spatial_graph.edge_pixels(node1, node2)
+        line = [
+            pixels.line_interpolate_point(i * skeleton_segmentation_length)
+            for i in range(int(-(-pixels.length // skeleton_segmentation_length) + 1))
+        ]
+        lines.append(line)
+    return MultiLineString(lines)
+
+
 def closest_point_from_skeleton(center: Point, skeleton: MultiLineString) -> Point:
     return nearest_points(center, skeleton)[1]
 
@@ -116,6 +135,7 @@ def segmented_graph_activation(
     spatial_graphs: list[SpatialGraph],
     timestamps: list[int],
     threshold: float = 10,
+    skeleton_segmentation_length: float = 5,
     verbose: int = 0,
 ) -> nx.Graph:
     """Return (in place) the segmented graph with activation time
@@ -144,17 +164,13 @@ def segmented_graph_activation(
             len(spatial_graphs) - 1
         ]
 
-    d = tm.perf_counter()
+    if verbose > 0:
+        d = tm.perf_counter()
     for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
         if verbose > 0:
             print(tm.perf_counter() - d)
             print(f"Comparing with graph {time}")
-        skeleton = MultiLineString(
-            [
-                spatial_graph.edge_pixels(node1, node2)
-                for node1, node2 in spatial_graph.edges
-            ]
-        )
+        skeleton = segmented_skeleton(spatial_graph, skeleton_segmentation_length)
 
         centers: list[Point] = []
         for _, _, edge_data in segmented_graph.edges(data=True):
