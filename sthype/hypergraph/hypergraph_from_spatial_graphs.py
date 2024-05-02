@@ -7,7 +7,7 @@ import networkx as nx
 from shapely import MultiLineString, Point
 from shapely.ops import nearest_points
 
-from .. import HyperGraph, SpatialGraph
+from .. import HyperGraph, SpatialGraph, SpatialTemporalGraph
 
 
 def hypergraph_from_spatial_graphs(
@@ -17,6 +17,20 @@ def hypergraph_from_spatial_graphs(
     segments_length: float = 10,
     verbose: int = 0,
 ) -> HyperGraph:
+    return HyperGraph(
+        spatial_temporal_graph_from_spatial_graphs(
+            spatial_graphs, timestamps, threshold, segments_length, verbose
+        )
+    )
+
+
+def spatial_temporal_graph_from_spatial_graphs(
+    spatial_graphs: list[SpatialGraph],
+    timestamps: list[int],
+    threshold: float = 10,
+    segments_length: float = 10,
+    verbose: int = 0,
+) -> SpatialTemporalGraph:
     """Create an hypergraph using SpatialGraphs
 
     Parameters
@@ -58,7 +72,7 @@ def hypergraph_from_spatial_graphs(
         verbose,
     )
 
-    return HyperGraph(segmented_graph)
+    return SpatialTemporalGraph(segmented_graph)
 
 
 def graph_segmentation(
