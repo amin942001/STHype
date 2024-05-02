@@ -42,8 +42,8 @@ def spatial_temporal_graph_from_spatial_graphs(
     threshold : int, optional
         The threshold at which you can say that two points are the same, by default 10
     segments_length : float, optional
-        length of the subdivision of edges, having segments_length>=threshold is recommended,
-        by default 10
+        length of the subdivision of edges,
+        having segments_length>=threshold is recommended, by default 10
     verbose : int, optional
         If verbose greater than 0, print some messages, by default 0
 
@@ -101,7 +101,7 @@ def graph_segmentation(
 
     node1: int
     node2: int
-    for node1, node2 in spatial_graph.edges:
+    for node1, node2, edge_data in spatial_graph.edges(data=True):
         pixels = spatial_graph.edge_pixels(node1, node2)
         new_nodes_amount = int(-(-pixels.length // segments_length) + 1)
         node_interpolation_positions = (
@@ -125,7 +125,9 @@ def graph_segmentation(
                 start = node1
             if index == len(new_edges_center) - 1:
                 end = node2
-            graph_segmented.add_edge(start, end, center=center, edge={node1, node2})
+            graph_segmented.add_edge(
+                start, end, center=center, edge={node1, node2}, **edge_data
+            )
             nodes_position[start] = new_nodes[index]
             nodes_position[end] = new_nodes[index + 1]
             label += 1
