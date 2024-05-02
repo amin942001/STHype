@@ -71,7 +71,7 @@ def graph_segmentation(
     spatial_graph : SpatialGraph
         The SpatialGraph to segment
     segments_length : float, optional
-        Length of the subdivision of edges, by default 5
+        Length of the subdivision of edges, by default 10
 
     Returns
     -------
@@ -115,6 +115,20 @@ def graph_segmentation(
 def segmented_skeleton(
     spatial_graph: SpatialGraph, tolerance: float = 5
 ) -> MultiLineString:
+    """Return a simplified SpatialGraph skeleton using Ramer–Douglas–Peucker algorithm
+
+    Parameters
+    ----------
+    spatial_graph : SpatialGraph
+        SpatialGraph to extract the skeleton from
+    tolerance : float, optional
+        tolerance when applying Ramer–Douglas–Peucker algorithm, by default 5
+
+    Returns
+    -------
+    MultiLineString
+        The simplified skeleton
+    """
     lines = MultiLineString(
         [
             spatial_graph.edge_pixels(node1, node2)
@@ -125,8 +139,22 @@ def segmented_skeleton(
     return lines.simplify(tolerance)
 
 
-def closest_point_from_skeleton(center: Point, skeleton: MultiLineString) -> Point:
-    return nearest_points(center, skeleton)[1]
+def closest_point_from_skeleton(point: Point, skeleton: MultiLineString) -> Point:
+    """Closest point of a skeleton from a point
+
+    Parameters
+    ----------
+    point : Point
+        The point
+    skeleton : MultiLineString
+        The skeleton
+
+    Returns
+    -------
+    Point
+        Closest point of skeleton from point
+    """
+    return nearest_points(point, skeleton)[1]
 
 
 def segmented_graph_activation(
@@ -146,8 +174,13 @@ def segmented_graph_activation(
         The graph where the activation time should be calculated
     spatial_graphs : list[SpatialGraph]
         The SpatialGraphs representing segmented_graph through time
+    timestamps : list[str  |  int]
+        Timestamps of the graphs used to calculate growth speed, ...
     threshold : float, optional
         The threshold at which you can say that two points are the same, by default 10
+    threshold : float, optional
+        Tolerance of Ramer–Douglas–Peucker algorithm to have a simplified skeleton,
+        should be less then threshold, by default 5
     verbose : int, optional
         If verbose greater than 0, print some messages, by default 0
 
