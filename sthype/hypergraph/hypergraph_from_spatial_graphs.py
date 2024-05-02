@@ -1,6 +1,5 @@
 """Functions to create an hypergraph from time correlated graphs"""
 
-import time as tm
 from functools import partial
 from multiprocessing import Pool
 
@@ -14,8 +13,8 @@ from .. import HyperGraph, SpatialGraph
 def hypergraph_from_spatial_graphs(
     spatial_graphs: list[SpatialGraph],
     timestamps: list[int],
-    segments_length: float = 10,
     threshold: float = 10,
+    segments_length: float = 10,
     verbose: int = 0,
 ) -> HyperGraph:
     """Create an hypergraph using SpatialGraphs
@@ -26,10 +25,11 @@ def hypergraph_from_spatial_graphs(
         List of SpatialGraph used to create the hypergraph
     timestamps : list[str  |  int]
         Timestamps of the graphs used to calculate growth speed, ...
-    segments_length : float, optional
-        length of the subdivision of edges, by default 5
     threshold : int, optional
         The threshold at which you can say that two points are the same, by default 10
+    segments_length : float, optional
+        length of the subdivision of edges, having segments_length>=threshold is recommended,
+        by default 10
     verbose : int, optional
         If verbose greater than 0, print some messages, by default 0
 
@@ -54,7 +54,7 @@ def hypergraph_from_spatial_graphs(
         spatial_graphs,
         timestamps,
         threshold,
-        segments_length / 2,
+        threshold / 2,
         verbose,
     )
 
@@ -62,7 +62,7 @@ def hypergraph_from_spatial_graphs(
 
 
 def graph_segmentation(
-    spatial_graph: SpatialGraph, segments_length: float = 5
+    spatial_graph: SpatialGraph, segments_length: float = 10
 ) -> nx.Graph:
     """Cut edges of a SpatialGraph into edge of size segments_length
 
@@ -113,17 +113,16 @@ def graph_segmentation(
 
 
 def segmented_skeleton(
-    spatial_graph: SpatialGraph, skeleton_segmentation_length: float = 10
+    spatial_graph: SpatialGraph, tolerance: float = 5
 ) -> MultiLineString:
-    lines: list[list[Point]] = []
-    for node1, node2 in spatial_graph.edges:
-        pixels = spatial_graph.edge_pixels(node1, node2)
-        line = [
-            pixels.line_interpolate_point(i * skeleton_segmentation_length)
-            for i in range(int(-(-pixels.length // skeleton_segmentation_length) + 1))
+    lines = MultiLineString(
+        [
+            spatial_graph.edge_pixels(node1, node2)
+            for node1, node2 in spatial_graph.edges
         ]
-        lines.append(line)
-    return MultiLineString(lines)
+    )
+
+    return lines.simplify(tolerance)
 
 
 def closest_point_from_skeleton(center: Point, skeleton: MultiLineString) -> Point:
@@ -135,7 +134,7 @@ def segmented_graph_activation(
     spatial_graphs: list[SpatialGraph],
     timestamps: list[int],
     threshold: float = 10,
-    skeleton_segmentation_length: float = 5,
+    tolerance: float = 5,
     verbose: int = 0,
 ) -> nx.Graph:
     """Return (in place) the segmented graph with activation time
@@ -164,13 +163,10 @@ def segmented_graph_activation(
             len(spatial_graphs) - 1
         ]
 
-    if verbose > 0:
-        d = tm.perf_counter()
     for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
         if verbose > 0:
-            print(tm.perf_counter() - d)
             print(f"Comparing with graph {time}")
-        skeleton = segmented_skeleton(spatial_graph, skeleton_segmentation_length)
+        skeleton = segmented_skeleton(spatial_graph, tolerance)
 
         centers: list[Point] = []
         for _, _, edge_data in segmented_graph.edges(data=True):
