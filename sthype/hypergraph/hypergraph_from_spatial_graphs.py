@@ -89,13 +89,21 @@ def graph_segmentation(
     node2: int
     for node1, node2 in spatial_graph.edges:
         pixels = spatial_graph.edge_pixels(node1, node2)
+        new_nodes_amount = int(-(-pixels.length // segments_length) + 1)
+        node_interpolation_positions = (
+            i * (pixels.length // segments_length) for i in range(new_nodes_amount)
+        )
+        edge_interpolation_positions = (
+            (i + 0.5) * (pixels.length // segments_length)
+            for i in range(new_nodes_amount - 1)
+        )
         new_nodes: list[Point] = [
-            pixels.line_interpolate_point(i * segments_length)
-            for i in range(int(-(-pixels.length // segments_length) + 1))
+            pixels.line_interpolate_point(position)
+            for position in node_interpolation_positions
         ]
         new_edges_center: list[Point] = [
-            pixels.line_interpolate_point((i + 0.5) * segments_length)
-            for i in range(int(-(-pixels.length // segments_length)))
+            pixels.line_interpolate_point(position)
+            for position in edge_interpolation_positions
         ]
         for index, center in enumerate(new_edges_center):
             start, end = label - 1, label
