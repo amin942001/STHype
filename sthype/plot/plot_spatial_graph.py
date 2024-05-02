@@ -13,6 +13,7 @@ def plot_spatial_graph(
     spatial_graph: SpatialGraph,
     region: tuple[tuple[int, int], tuple[int, int]] | None = None,
     add_nodes: bool = False,
+    **kwargs
 ) -> tuple[PathPatch, Line2D] | PathPatch:
     """Plot a SpatialGraph
 
@@ -60,4 +61,38 @@ def plot_spatial_graph(
 
     lines = MultiLineString(lines)
 
-    return plot_line(lines, ax, add_points=False)
+    return plot_line(lines, ax, add_points=False, **kwargs)
+
+
+def plot_spatial_graph_node(
+    spatial_graph: SpatialGraph,
+    node: int,
+    area_size: int = 100,
+    add_nodes: bool = False,
+    **kwargs
+) -> tuple[PathPatch, Line2D] | PathPatch:
+    """Plot the Spatial Graph around a node
+
+    Parameters
+    ----------
+    spatial_graph : SpatialGraph
+        The SpatialGraph to plot
+    node : int
+        The node to look at
+    area_size : int, optional
+        area around the node, by default 100
+    add_nodes : bool, optional
+        Plot node label if True, by default False
+
+    Returns
+    -------
+    tuple[PathPatch, Line2D] | PathPatch
+        The plot of the area around a node of a SpatialGraph
+    """
+    coord = spatial_graph.positions[node]
+    x, y = coord.x, coord.y
+    region = [
+        [x - area_size // 2, y - area_size // 2],
+        [x + area_size // 2, y + area_size // 2],
+    ]
+    return plot_spatial_graph(spatial_graph, region, add_nodes=add_nodes, **kwargs)
