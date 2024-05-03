@@ -1,5 +1,8 @@
 import networkx as nx
+import numpy as np
 from scipy.ndimage import median_filter
+
+from ..utils import to_monotonic
 
 Edge = tuple[int, int]
 
@@ -7,10 +10,9 @@ Edge = tuple[int, int]
 class SpatialTemporalGraph(nx.Graph):
     def __init__(self, incoming_graph_data=None, smoothing: int = 11, **attr):
         super().__init__(incoming_graph_data, **attr)
-        self.smoothing = smoothing
         self._edges_segments_gathered = False
         self.edges_segments: dict[Edge, list[Edge]] = self.get_edges_segments()
-        self.correct_activations()
+        self.correct_activations(smoothing)
 
     def get_edges_segments(self) -> dict[Edge, list[Edge]]:
         if self._edges_segments_gathered:
@@ -45,13 +47,20 @@ class SpatialTemporalGraph(nx.Graph):
         self._edges_segments_gathered = True
         return ordered_edges_segments
 
-    def correct_activations(self):
+    def correct_activations(self, smoothing: int = 11):
         for segments in self.edges_segments.values():
-            activations = []
-            for node1, node2 in segments:
-                activations.append(self[node1][node2]["activation"])
+            activations = np.zeros(len(segments))
+            for index, (node1, node2) in enumerate(segments):
+                activations[index] = self[node1][node2]["activation"]
 
-            corrected_activations = median_filter(activations, size=self.smoothing)
+            corrected_activations = median_filter(
+                activations,
+                size=smoothing,
+                mode="nearest",
+                cval=np.median(activations),
+            )
+            corrected_activations = to_monotonic(corrected_activations)
+
             for corrected_activation, (node1, node2) in zip(
                 corrected_activations, segments
             ):
