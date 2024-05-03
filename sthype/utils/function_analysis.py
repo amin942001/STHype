@@ -49,5 +49,4 @@ def to_monotonic(array_to_transform: np.ndarray) -> np.ndarray:
             array_to_transform[-floor_end_length:] = array_to_transform[
                 -1 - floor_end_length
             ]
-        print(array_to_transform)
     return array_to_transform
