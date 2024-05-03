@@ -40,8 +40,8 @@ class SpatialGraph(nx.Graph):
         Raises
         ------
         Exception
-            Each edge pixels should be of type list[tuple[int, int]] and its boundary
-            should match the nodes positions of the edge
+            Each edge pixels should be of type list[tuple[float, float]] and its
+            boundary should match the nodes positions of the edge
         """
         positions = self.positions
         undirected_graph = nx.DiGraph()
@@ -87,8 +87,8 @@ class SpatialGraph(nx.Graph):
 
         Returns
         -------
-        list[tuple[int, int]]
-            the pixel list from node1 to node2
+        LineString
+            The line from node1 to node2
         """
         return self.undirected_graph[node1][node2]["pixels"]
 
