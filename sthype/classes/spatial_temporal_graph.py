@@ -57,7 +57,6 @@ class SpatialTemporalGraph(nx.Graph):
                 activations,
                 size=smoothing,
                 mode="nearest",
-                cval=np.median(activations),
             )
             corrected_activations = to_monotonic(corrected_activations)
 
