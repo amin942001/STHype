@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 from scipy.ndimage import median_filter
 
-from ..utils import is_monotonic, to_monotonic
+from ..utils import to_monotonic
 
 Edge = tuple[int, int]
 
