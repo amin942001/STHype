@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 from scipy.ndimage import median_filter
 
-from ..utils import to_monotonic
+from ..utils import is_monotonic, to_monotonic
 
 Edge = tuple[int, int]
 
@@ -19,8 +19,8 @@ class SpatialTemporalGraph(nx.Graph):
             A graph with attribute edge and center and activation to each of its edge,
             and position to each of its node, by default None
         smoothing : int, optional
-            A smoothing to correct activation, step of length < smoothing // 2,
-            by default 11
+            A smoothing to correct activation,
+            activation step of length < smoothing // 2, by default 11
         """
         super().__init__(incoming_graph_data, **attr)
         self._edges_segments_gathered = False
@@ -80,6 +80,12 @@ class SpatialTemporalGraph(nx.Graph):
             for index, (node1, node2) in enumerate(segments):
                 activations[index] = self[node1][node2]["activation"]
 
+            if len(segments) >= 5:
+                activations[1] = np.median(activations[:5])
+                activations[-2] = np.median(activations[-5:])
+            if len(segments) >= 3:
+                activations[0] = np.median(activations[:3])
+                activations[-1] = np.median(activations[-3:])
             corrected_activations = median_filter(
                 activations,
                 size=smoothing,
