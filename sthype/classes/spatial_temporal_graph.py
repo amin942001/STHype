@@ -3,8 +3,11 @@ import numpy as np
 from scipy.ndimage import median_filter
 
 from ..utils import to_monotonic
+from .utils.hyperedge import edge_matches_time_angle
 
 Edge = tuple[int, int]
+InitialEdge = tuple[int, int]  # The first node is smaller than the second one
+HyperEdge = int
 
 
 class SpatialTemporalGraph(nx.Graph):
@@ -22,24 +25,35 @@ class SpatialTemporalGraph(nx.Graph):
             A smoothing to correct activation,
             more precisely, activation step of length < smoothing // 2, by default 11
         """
+        self.smoothing = smoothing
+        self.positions = nx.get_node_attributes(incoming_graph_data, "position")
+
         super().__init__(incoming_graph_data, **attr)
+
         self._initial_edges_edges_gathered = False
-        self.initial_edges_edges: dict[Edge, list[Edge]] = (
+        self.initial_edges_edges: dict[InitialEdge, list[Edge]] = (
             self.get_initial_edges_edges()
         )
+        self.initial_edges_time_interval: dict[InitialEdge, tuple[int, int]] = {}
         self.correct_activations(smoothing)
+        self._initial_graph_gathered = False
+        self.initial_graph = self.get_initial_graph()
 
-    def get_initial_edges_edges(self) -> dict[Edge, list[Edge]]:
+        self._hyperedges_gathered = False
+        self.hyperedges: dict[HyperEdge, list[Edge]] = self.get_hyperedges()
+
+    def get_initial_edges_edges(self) -> dict[InitialEdge, list[Edge]]:
         """Return a dict with initial_edge as attribute and list of edge as value
 
         Returns
         -------
-        dict[Edge, list[Edge]]
+        dict[InitialEdge, list[Edge]]
             dict with initial_edge as attribute and an ordered list of edge as value
+            The first node of an InitialEdge in smaller than the second one
         """
         if self._initial_edges_edges_gathered:
             return self.initial_edges_edges
-        initial_edges_edges: dict[Edge, list[Edge]] = {}
+        initial_edges_edges: dict[InitialEdge, list[Edge]] = {}
         for node1, node2, edge_data in self.edges(data=True):
             node_initial_edge1 = min(edge_data["initial_edge"])
             node_initial_edge2 = max(edge_data["initial_edge"])
@@ -52,7 +66,7 @@ class SpatialTemporalGraph(nx.Graph):
                     (node1, node2)
                 ]
 
-        ordered_initial_edges_edges: dict[Edge, list[Edge]] = {}
+        ordered_initial_edges_edges: dict[InitialEdge, list[Edge]] = {}
         for initial_edge in initial_edges_edges:
             initial_edge_node1, _ = initial_edge
             edges = initial_edges_edges[initial_edge].copy()
@@ -80,8 +94,9 @@ class SpatialTemporalGraph(nx.Graph):
         smoothing : int, optional
             smoothing used in median_filter to remove errors, by default 11
         """
-        for edges in self.initial_edges_edges.values():
-            activations = np.zeros(len(edges))
+        initial_edges_time_interval: dict[InitialEdge, tuple[int, int]] = {}
+        for initial_edge, edges in self.initial_edges_edges.items():
+            activations = np.zeros(len(edges), dtype=int)
             for index, (node1, node2) in enumerate(edges):
                 activations[index] = self[node1][node2]["activation"]
 
@@ -102,6 +117,77 @@ class SpatialTemporalGraph(nx.Graph):
                 corrected_activations, edges
             ):
                 self[node1][node2]["corrected_activation"] = corrected_activation
+
+            initial_edges_time_interval[initial_edge] = (
+                corrected_activations[0],
+                corrected_activations[-1],
+            )
+
+        self.initial_edges_time_interval = initial_edges_time_interval
+
+    def get_initial_graph(self):
+        if self._initial_graph_gathered:
+            return self.initial_graph
+        initial_graph = nx.Graph()
+        for initial_edge in self.initial_edges_edges:
+            first_edge_node1, first_edge_node2 = self.initial_edges_edges[initial_edge][
+                0
+            ]
+            attributes = self[first_edge_node1][first_edge_node2]
+            initial_graph.add_edge(
+                *initial_edge,
+                edges=self.initial_edges_edges[initial_edge],
+                time_interval=self.initial_edges_time_interval[initial_edge],
+                **attributes
+            )
+        nx.set_node_attributes(initial_graph, self.positions, "position")
+        self._initial_graph_gathered = True
+        return initial_graph
+
+    def get_hyperedges(self):
+        H: dict[InitialEdge, HyperEdge] = {
+            initial_edge: 0 for initial_edge in self.initial_edges_edges
+        }
+        Cor: dict[InitialEdge, list[InitialEdge]] = {
+            initial_edge: [(0, 0)] * 10 for initial_edge in self.initial_edges_edges
+        }
+        for node_intersection in self.initial_graph:
+            nodes_times = {}
+            for node in self.initial_graph[node_intersection]:
+                if node < node_intersection:
+                    nodes_times[node] = self.initial_edges_time_interval[
+                        node, node_intersection
+                    ][0]
+                else:
+                    nodes_times[node] = self.initial_edges_time_interval[
+                        node_intersection, node
+                    ][1]
+            matches = edge_matches_time_angle(
+                node_intersection, nodes_times, self.positions
+            )
+            for match in matches:
+                edge1, edge2 = match[0], match[1]
+                Cor[edge1][Cor[edge1].index((0, 0))] = edge2
+                Cor[edge2][Cor[edge2].index((0, 0))] = edge1
+
+        CurrentMark = 1
+        for initial_edge in self.initial_edges_edges:
+            if H[initial_edge] == 0:
+                stack = [initial_edge]
+                visited = set()
+                while stack:
+                    current = stack.pop()
+                    H[current] = CurrentMark
+                    related_edges = [
+                        cor
+                        for cor in Cor[current]
+                        if cor != (0, 0) and H[cor] == 0 and cor not in visited
+                    ]
+                    stack.extend(related_edges)
+                    visited.update(related_edges)
+                CurrentMark += 1
+
+        return H
 
     def get_initial_edge_edges(self, node1: int, node2: int) -> list[Edge]:
         """Return the edges of an initial_edge from node1 to node2
