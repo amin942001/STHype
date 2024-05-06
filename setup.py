@@ -14,7 +14,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/amin942001/STHype",
     license="MIT",
-    install_requires=["matplotlib", "networkx", "numpy", "shapely"],
+    install_requires=["matplotlib", "networkx", "numpy", "shapely", "scipy"],
     extras_require={
         "dev": ["flake8-bugbear", "pytest", "flake8", "black"],
     },
