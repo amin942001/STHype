@@ -41,9 +41,8 @@ class SpatialTemporalGraph(nx.Graph):
             return self.initial_edges_edges
         initial_edges_edges: dict[Edge, list[Edge]] = {}
         for node1, node2, edge_data in self.edges(data=True):
-            node_initial_edge1, node_initial_edge2 = min(edge_data["edge"]), max(
-                edge_data["edge"]
-            )
+            node_initial_edge1 = min(edge_data["initial_edge"])
+            node_initial_edge2 = max(edge_data["initial_edge"])
             if initial_edges_edges.get((node_initial_edge1, node_initial_edge2)):
                 initial_edges_edges[node_initial_edge1, node_initial_edge2].append(
                     (node1, node2)
@@ -104,7 +103,7 @@ class SpatialTemporalGraph(nx.Graph):
             ):
                 self[node1][node2]["corrected_activation"] = corrected_activation
 
-    def get_edge_segments(self, node1: int, node2: int) -> list[Edge]:
+    def get_initial_edge_edges(self, node1: int, node2: int) -> list[Edge]:
         """Return the edges of an initial_edge from node1 to node2
 
         Parameters

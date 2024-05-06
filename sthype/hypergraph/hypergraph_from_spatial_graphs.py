@@ -62,7 +62,7 @@ def spatial_temporal_graph_from_spatial_graphs(
         print("Segmentation")
     segmented_graph = graph_segmentation(final_graph, segments_length)
     if verbose > 0:
-        print("Segment Activation")
+        print("Edge Activation")
     segmented_graph = segmented_graph_activation(
         segmented_graph,
         spatial_graphs,
@@ -126,7 +126,7 @@ def graph_segmentation(
             if index == len(new_edges_center) - 1:
                 end = node2
             graph_segmented.add_edge(
-                start, end, center=center, edge={node1, node2}, **edge_data
+                start, end, center=center, initial_edge={node1, node2}, **edge_data
             )
             nodes_position[start] = new_nodes[index]
             nodes_position[end] = new_nodes[index + 1]
