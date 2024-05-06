@@ -20,52 +20,58 @@ class SpatialTemporalGraph(nx.Graph):
             and position to each of its node, by default None
         smoothing : int, optional
             A smoothing to correct activation,
-            activation step of length < smoothing // 2, by default 11
+            more precisely, activation step of length < smoothing // 2, by default 11
         """
         super().__init__(incoming_graph_data, **attr)
-        self._edges_segments_gathered = False
-        self.edges_segments: dict[Edge, list[Edge]] = self.get_edges_segments()
+        self._initial_edges_edges_gathered = False
+        self.initial_edges_edges: dict[Edge, list[Edge]] = (
+            self.get_initial_edges_edges()
+        )
         self.correct_activations(smoothing)
 
-    def get_edges_segments(self) -> dict[Edge, list[Edge]]:
-        """Return a dict with edge_group as attribute and list of edge as value
+    def get_initial_edges_edges(self) -> dict[Edge, list[Edge]]:
+        """Return a dict with initial_edge as attribute and list of edge as value
 
         Returns
         -------
         dict[Edge, list[Edge]]
-            dict with edge_group as attribute and an ordered list of edge as value
+            dict with initial_edge as attribute and an ordered list of edge as value
         """
-        if self._edges_segments_gathered:
-            return self.edges_segments
-        edges_segments: dict[Edge, list[Edge]] = {}
+        if self._initial_edges_edges_gathered:
+            return self.initial_edges_edges
+        initial_edges_edges: dict[Edge, list[Edge]] = {}
         for node1, node2, edge_data in self.edges(data=True):
-            node_edge1, node_edge2 = min(edge_data["edge"]), max(edge_data["edge"])
-            if edges_segments.get((node_edge1, node_edge2)):
-                edges_segments[(node_edge1, node_edge2)].append((node1, node2))
+            node_initial_edge1, node_initial_edge2 = min(edge_data["edge"]), max(
+                edge_data["edge"]
+            )
+            if initial_edges_edges.get((node_initial_edge1, node_initial_edge2)):
+                initial_edges_edges[node_initial_edge1, node_initial_edge2].append(
+                    (node1, node2)
+                )
             else:
-                edges_segments[(node_edge1, node_edge2)] = [(node1, node2)]
+                initial_edges_edges[node_initial_edge1, node_initial_edge2] = [
+                    (node1, node2)
+                ]
 
-        ordered_edges_segments: dict[Edge, list[Edge]] = {}
-        for edge in edges_segments:
-            edge_node1, _ = edge
-            segments = edges_segments[edge].copy()
+        ordered_initial_edges_edges: dict[Edge, list[Edge]] = {}
+        for initial_edge in initial_edges_edges:
+            initial_edge_node1, _ = initial_edge
+            edges = initial_edges_edges[initial_edge].copy()
 
-            searched_node = edge_node1
-            ordered_edge_segments = []
-            while segments:
-                next_segment = [
-                    segment for segment in segments if searched_node in segment
-                ][0]
-                segments.remove(next_segment)
-                if next_segment[0] != searched_node:
-                    next_segment = next_segment[::-1]
-                ordered_edge_segments.append(next_segment)
-                searched_node = next_segment[1]
+            searched_node = initial_edge_node1
+            ordered_initial_edge_edges = []
+            while edges:
+                next_edge = [edge for edge in edges if searched_node in edge][0]
+                edges.remove(next_edge)
+                if next_edge[0] != searched_node:
+                    next_edge = next_edge[::-1]
+                ordered_initial_edge_edges.append(next_edge)
+                searched_node = next_edge[1]
 
-            ordered_edges_segments[edge] = ordered_edge_segments
+            ordered_initial_edges_edges[initial_edge] = ordered_initial_edge_edges
 
-        self._edges_segments_gathered = True
-        return ordered_edges_segments
+        self._initial_edges_edges_gathered = True
+        return ordered_initial_edges_edges
 
     def correct_activations(self, smoothing: int = 11):
         """Add a corrected_activation attribute to the edges
@@ -75,15 +81,15 @@ class SpatialTemporalGraph(nx.Graph):
         smoothing : int, optional
             smoothing used in median_filter to remove errors, by default 11
         """
-        for segments in self.edges_segments.values():
-            activations = np.zeros(len(segments))
-            for index, (node1, node2) in enumerate(segments):
+        for edges in self.initial_edges_edges.values():
+            activations = np.zeros(len(edges))
+            for index, (node1, node2) in enumerate(edges):
                 activations[index] = self[node1][node2]["activation"]
 
-            if len(segments) >= 5:
+            if len(edges) >= 5:
                 activations[1] = np.median(activations[:5])
                 activations[-2] = np.median(activations[-5:])
-            if len(segments) >= 3:
+            if len(edges) >= 3:
                 activations[0] = np.median(activations[:3])
                 activations[-1] = np.median(activations[-3:])
             corrected_activations = median_filter(
@@ -94,12 +100,12 @@ class SpatialTemporalGraph(nx.Graph):
             corrected_activations = to_monotonic(corrected_activations)
 
             for corrected_activation, (node1, node2) in zip(
-                corrected_activations, segments
+                corrected_activations, edges
             ):
                 self[node1][node2]["corrected_activation"] = corrected_activation
 
     def get_edge_segments(self, node1: int, node2: int) -> list[Edge]:
-        """Return the edge segments from node1 to node2
+        """Return the edges of an initial_edge from node1 to node2
 
         Parameters
         ----------
@@ -111,10 +117,8 @@ class SpatialTemporalGraph(nx.Graph):
         Returns
         -------
         list[Edge]
-            list of edge segments from node1 to node2
+            list of the edges of an initial_edge from node1 to node2
         """
         if node1 < node2:
-            return self.edges_segments[node1, node2]
-        return [
-            segment[::-1] for segment in reversed(self.edges_segments[node2, node1])
-        ]
+            return self.initial_edges_edges[node1, node2]
+        return [edge[::-1] for edge in reversed(self.initial_edges_edges[node2, node1])]
