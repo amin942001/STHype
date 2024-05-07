@@ -67,7 +67,7 @@ def plot_spatial_graph(
 def plot_spatial_graph_node(
     spatial_graph: SpatialGraph,
     node: int,
-    area_size: int = 100,
+    area_size: float = 100,
     add_nodes: bool = False,
     **kwargs
 ) -> tuple[PathPatch, Line2D] | PathPatch:
@@ -92,7 +92,7 @@ def plot_spatial_graph_node(
     coord = spatial_graph.positions[node]
     x, y = coord.x, coord.y
     region = [
-        [x - area_size // 2, y - area_size // 2],
-        [x + area_size // 2, y + area_size // 2],
+        [x - area_size / 2, y - area_size / 2],
+        [x + area_size / 2, y + area_size / 2],
     ]
     return plot_spatial_graph(spatial_graph, region, add_nodes=add_nodes, **kwargs)
