@@ -1,6 +1,7 @@
 import networkx as nx
 import numpy as np
 from scipy.ndimage import median_filter
+from shapely import Point
 
 from ..utils import to_monotonic
 from .utils.hyperedge import edge_matches_time_angle
@@ -26,7 +27,9 @@ class SpatialTemporalGraph(nx.Graph):
             more precisely, activation step of length < smoothing // 2, by default 11
         """
         self.smoothing = smoothing
-        self.positions = nx.get_node_attributes(incoming_graph_data, "position")
+        self.positions: dict[int, Point] = nx.get_node_attributes(
+            incoming_graph_data, "position"
+        )
 
         super().__init__(incoming_graph_data, **attr)
 
@@ -203,6 +206,8 @@ class SpatialTemporalGraph(nx.Graph):
         for initial_edge, hyperedge in initial_edges_hyperedge.items():
             node1, node2 = initial_edge
             self.initial_graph[node1][node2]["hyperedge"] = hyperedge
+            for node_begin, node_end in self.get_initial_edge_edges(node1, node2):
+                self[node_begin][node_end]["hyperedge"] = hyperedge
             if hyperedges_initial_edges.get(hyperedge):
                 hyperedges_initial_edges[hyperedge].append(initial_edge)
             else:
@@ -214,6 +219,7 @@ class SpatialTemporalGraph(nx.Graph):
             nodes, count = np.unique(nodes_hyperedge, return_counts=True)
             first_node = nodes[count < 2][0]
             if nodes[count > 2].size > 0:
+                ordered_hyperedges_initial_edges[hyperedge] = initial_edges
                 continue
             initial_edges_to_search_in = initial_edges.copy()
 
