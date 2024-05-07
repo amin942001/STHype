@@ -36,11 +36,14 @@ class SpatialTemporalGraph(nx.Graph):
         )
         self.initial_edges_time_interval: dict[InitialEdge, tuple[int, int]] = {}
         self.correct_activations(smoothing)
+
         self._initial_graph_gathered = False
         self.initial_graph = self.get_initial_graph()
 
-        self._hyperedges_gathered = False
-        self.hyperedges: dict[HyperEdge, list[Edge]] = self.get_hyperedges()
+        self._hyperedges_initial_edges_gathered = False
+        self.hyperedges_initial_edges: dict[HyperEdge, list[Edge]] = (
+            self.get_hyperedges_initial_edges()
+        )
 
     def get_initial_edges_edges(self) -> dict[InitialEdge, list[Edge]]:
         """Return a dict with initial_edge as attribute and list of edge as value
@@ -83,6 +86,7 @@ class SpatialTemporalGraph(nx.Graph):
 
             ordered_initial_edges_edges[initial_edge] = ordered_initial_edge_edges
 
+        self.initial_edges_edges = ordered_initial_edges_edges
         self._initial_edges_edges_gathered = True
         return ordered_initial_edges_edges
 
@@ -108,22 +112,24 @@ class SpatialTemporalGraph(nx.Graph):
                 activations[-1] = np.median(activations[-3:])
             corrected_activations = median_filter(
                 activations,
-                size=smoothing,
+                size=np.max((len(edges), smoothing)),
                 mode="nearest",
             )
             corrected_activations = to_monotonic(corrected_activations)
-
-            for corrected_activation, (node1, node2) in zip(
-                corrected_activations, edges
-            ):
-                self[node1][node2]["corrected_activation"] = corrected_activation
 
             initial_edges_time_interval[initial_edge] = (
                 corrected_activations[0],
                 corrected_activations[-1],
             )
 
+            for corrected_activation, (node1, node2) in zip(
+                corrected_activations, edges
+            ):
+                self[node1][node2]["corrected_activation"] = corrected_activation
+
         self.initial_edges_time_interval = initial_edges_time_interval
+        self._initial_edges_edges_gathered = False
+        self._hyperedges_initial_edges_gathered = False
 
     def get_initial_graph(self):
         if self._initial_graph_gathered:
@@ -141,13 +147,14 @@ class SpatialTemporalGraph(nx.Graph):
                 **attributes
             )
         nx.set_node_attributes(initial_graph, self.positions, "position")
+
+        self.initial_graph = initial_graph
         self._initial_graph_gathered = True
         return initial_graph
 
-    def get_hyperedges(self):
-        H: dict[InitialEdge, HyperEdge] = {
-            initial_edge: 0 for initial_edge in self.initial_edges_edges
-        }
+    def get_hyperedges_initial_edges(self):
+        if self._hyperedges_initial_edges_gathered:
+            return self.hyperedges_initial_edges
         Cor: dict[InitialEdge, list[InitialEdge]] = {
             initial_edge: [(0, 0)] * 10 for initial_edge in self.initial_edges_edges
         }
@@ -157,11 +164,11 @@ class SpatialTemporalGraph(nx.Graph):
                 if node < node_intersection:
                     nodes_times[node] = self.initial_edges_time_interval[
                         node, node_intersection
-                    ][0]
+                    ][1]
                 else:
                     nodes_times[node] = self.initial_edges_time_interval[
                         node_intersection, node
-                    ][1]
+                    ][0]
             matches = edge_matches_time_angle(
                 node_intersection, nodes_times, self.positions
             )
@@ -170,24 +177,70 @@ class SpatialTemporalGraph(nx.Graph):
                 Cor[edge1][Cor[edge1].index((0, 0))] = edge2
                 Cor[edge2][Cor[edge2].index((0, 0))] = edge1
 
+        initial_edges_hyperedge: dict[InitialEdge, HyperEdge] = {
+            initial_edge: 0 for initial_edge in self.initial_edges_edges
+        }
         CurrentMark = 1
         for initial_edge in self.initial_edges_edges:
-            if H[initial_edge] == 0:
+            if initial_edges_hyperedge[initial_edge] == 0:
                 stack = [initial_edge]
                 visited = set()
                 while stack:
                     current = stack.pop()
-                    H[current] = CurrentMark
+                    initial_edges_hyperedge[current] = CurrentMark
                     related_edges = [
                         cor
                         for cor in Cor[current]
-                        if cor != (0, 0) and H[cor] == 0 and cor not in visited
+                        if cor != (0, 0)
+                        and initial_edges_hyperedge[cor] == 0
+                        and cor not in visited
                     ]
                     stack.extend(related_edges)
                     visited.update(related_edges)
                 CurrentMark += 1
 
-        return H
+        hyperedges_initial_edges: dict[HyperEdge, list[InitialEdge]] = {}
+        for initial_edge, hyperedge in initial_edges_hyperedge.items():
+            node1, node2 = initial_edge
+            self.initial_graph[node1][node2]["hyperedge"] = hyperedge
+            if hyperedges_initial_edges.get(hyperedge):
+                hyperedges_initial_edges[hyperedge].append(initial_edge)
+            else:
+                hyperedges_initial_edges[hyperedge] = [initial_edge]
+
+        ordered_hyperedges_initial_edges: dict[HyperEdge, list[InitialEdge]] = {}
+        for hyperedge, initial_edges in hyperedges_initial_edges.items():
+            nodes_hyperedge = np.array(initial_edges).flatten()
+            nodes, count = np.unique(nodes_hyperedge, return_counts=True)
+            first_node = nodes[count < 2][0]
+            if nodes[count > 2].size > 0:
+                continue
+            initial_edges_to_search_in = initial_edges.copy()
+
+            searched_node = first_node
+            ordered_hyperedge_initial_edges = []
+            while initial_edges_to_search_in:
+                next_initial_edge = [
+                    initial_edge
+                    for initial_edge in initial_edges_to_search_in
+                    if searched_node in initial_edge
+                ][0]
+                initial_edges_to_search_in.remove(next_initial_edge)
+                if next_initial_edge[0] != searched_node:
+                    next_initial_edge = next_initial_edge[::-1]
+                ordered_hyperedge_initial_edges.append(next_initial_edge)
+                searched_node = next_initial_edge[1]
+
+            ordered_hyperedges_initial_edges[hyperedge] = (
+                ordered_hyperedge_initial_edges
+            )
+
+        self.hyperedges_initial_edges = ordered_hyperedges_initial_edges
+        self._hyperedges_initial_edges_gathered = True
+        return ordered_hyperedges_initial_edges
+
+    def get_hyperedges_edges(self):
+        pass
 
     def get_initial_edge_edges(self, node1: int, node2: int) -> list[Edge]:
         """Return the edges of an initial_edge from node1 to node2

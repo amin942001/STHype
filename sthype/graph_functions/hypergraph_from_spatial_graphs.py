@@ -105,10 +105,11 @@ def graph_segmentation(
         pixels = spatial_graph.edge_pixels(node1, node2)
         new_nodes_amount = int(-(-pixels.length // segments_length) + 1)
         node_interpolation_positions = (
-            i * (pixels.length // segments_length) for i in range(new_nodes_amount)
+            i * (pixels.length / (new_nodes_amount - 1))
+            for i in range(new_nodes_amount)
         )
         edge_interpolation_positions = (
-            (i + 0.5) * (pixels.length // segments_length)
+            (i + 0.5) * (pixels.length / (new_nodes_amount - 1))
             for i in range(new_nodes_amount - 1)
         )
         new_nodes: list[Point] = [
