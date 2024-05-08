@@ -217,15 +217,18 @@ class SpatialTemporalGraph(nx.Graph):
         for hyperedge, initial_edges in hyperedges_initial_edges.items():
             nodes_hyperedge = np.array(initial_edges).flatten()
             nodes, count = np.unique(nodes_hyperedge, return_counts=True)
-            first_node = nodes[count < 2][0]
-            if nodes[count > 2].size > 0:
-                ordered_hyperedges_initial_edges[hyperedge] = initial_edges
-                continue
+            print(count)
+            print(hyperedge, initial_edges)
+
+            if nodes[count % 2 == 1].size != 2:
+                first_node, last_node = nodes[0], nodes[0]
+            else:
+                first_node, last_node = nodes[count % 2 == 1]
             initial_edges_to_search_in = initial_edges.copy()
 
             searched_node = first_node
             ordered_hyperedge_initial_edges = []
-            while initial_edges_to_search_in:
+            while searched_node != last_node or not ordered_hyperedge_initial_edges:
                 next_initial_edge = [
                     initial_edge
                     for initial_edge in initial_edges_to_search_in
