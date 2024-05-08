@@ -217,15 +217,16 @@ class SpatialTemporalGraph(nx.Graph):
         for hyperedge, initial_edges in hyperedges_initial_edges.items():
             nodes_hyperedge = np.array(initial_edges).flatten()
             nodes, count = np.unique(nodes_hyperedge, return_counts=True)
-            first_node = nodes[count < 2][0]
-            if nodes[count > 2].size > 0:
-                ordered_hyperedges_initial_edges[hyperedge] = initial_edges
-                continue
+
+            if nodes[count % 2 == 1].size != 2:
+                first_node, last_node = nodes[0], nodes[0]
+            else:
+                first_node, last_node = nodes[count % 2 == 1]
             initial_edges_to_search_in = initial_edges.copy()
 
             searched_node = first_node
             ordered_hyperedge_initial_edges = []
-            while initial_edges_to_search_in:
+            while searched_node != last_node or not ordered_hyperedge_initial_edges:
                 next_initial_edge = [
                     initial_edge
                     for initial_edge in initial_edges_to_search_in
@@ -245,9 +246,6 @@ class SpatialTemporalGraph(nx.Graph):
         self._hyperedges_initial_edges_gathered = True
         return ordered_hyperedges_initial_edges
 
-    def get_hyperedges_edges(self):
-        pass
-
     def get_initial_edge_edges(self, node1: int, node2: int) -> list[Edge]:
         """Return the edges of an initial_edge from node1 to node2
 
@@ -266,3 +264,10 @@ class SpatialTemporalGraph(nx.Graph):
         if node1 < node2:
             return self.initial_edges_edges[node1, node2]
         return [edge[::-1] for edge in reversed(self.initial_edges_edges[node2, node1])]
+
+    def get_hyperedge_edges(self, hyperedge: HyperEdge) -> list[Edge]:
+        hyperedge_initial_edges = self.get_hyperedges_initial_edges()[hyperedge]
+        hyperedge_edges: list[Edge] = []
+        for initial_edge in hyperedge_initial_edges:
+            hyperedge_edges.extend(self.get_initial_edge_edges(*initial_edge))
+        return hyperedge_edges

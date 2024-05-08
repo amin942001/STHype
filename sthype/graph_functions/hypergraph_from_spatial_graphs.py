@@ -4,7 +4,7 @@ from functools import partial
 from multiprocessing import Pool
 
 import networkx as nx
-from shapely import MultiLineString, Point
+from shapely import MultiLineString, MultiPoint, Point
 from shapely.ops import nearest_points
 
 from .. import HyperGraph, SpatialGraph, SpatialTemporalGraph
@@ -85,7 +85,8 @@ def graph_segmentation(
     spatial_graph : SpatialGraph
         The SpatialGraph to segment
     segments_length : float, optional
-        Length of the subdivision of edges, by default 10
+        Length of the subdivision of edges. If an edge is less than that,
+        it is removed, by default 10
 
     Returns
     -------
@@ -101,6 +102,7 @@ def graph_segmentation(
 
     node1: int
     node2: int
+    edges_to_contract: list[tuple[int, int]] = []
     for node1, node2, edge_data in spatial_graph.edges(data=True):
         pixels = spatial_graph.edge_pixels(node1, node2)
         new_nodes_amount = int(-(-pixels.length // segments_length) + 1)
@@ -120,6 +122,9 @@ def graph_segmentation(
             pixels.line_interpolate_point(position)
             for position in edge_interpolation_positions
         ]
+        if len(new_edges_center) == 1:
+            edges_to_contract.append((node1, node2))
+
         for index, center in enumerate(new_edges_center):
             start, end = label - 1, label
             if index == 0:
@@ -133,6 +138,50 @@ def graph_segmentation(
             nodes_position[end] = new_nodes[index + 1]
             label += 1
     nx.set_node_attributes(graph_segmented, nodes_position, "position")
+
+    nodes_remapping = {node: node for node in spatial_graph}
+    while edges_to_contract:
+        edge_stack = [edges_to_contract.pop()]
+        edges_group_to_contract = []
+        while edge_stack:
+            new_edge = edge_stack.pop()
+            edges_group_to_contract.append(new_edge)
+            edges_to_add_to_stack = [
+                (node1, node2)
+                for node1, node2 in edges_to_contract
+                if node1 in new_edge or node2 in new_edge
+            ]
+            edges_to_contract = [
+                edge for edge in edges_to_contract if edge not in edges_to_add_to_stack
+            ]
+            edge_stack.extend(edges_to_add_to_stack)
+
+        nodes_group_to_contract = list(
+            set(
+                [node for node, _ in edges_group_to_contract]
+                + [node for _, node in edges_group_to_contract]
+            )
+        )
+        points = MultiPoint([nodes_position[node] for node in nodes_group_to_contract])
+        new_node = max(graph_segmented.nodes) + 1
+        graph_segmented.add_node(new_node, position=points.centroid)
+        for node in nodes_group_to_contract:
+            nx.contracted_nodes(
+                graph_segmented, new_node, node, self_loops=False, copy=False
+            )
+            nodes_remapping[node] = new_node
+
+    edges_to_remove = []
+    for node1, node2, edge_data in graph_segmented.edges(data=True):
+        node_initial1, node_initial2 = edge_data["initial_edge"]
+        if nodes_remapping[node_initial1] == nodes_remapping[node_initial2]:
+            edges_to_remove.append((node1, node2))
+        else:
+            graph_segmented[node1][node2]["initial_edge"] = {
+                nodes_remapping[node_initial1],
+                nodes_remapping[node_initial2],
+            }
+    graph_segmented.remove_edges_from(edges_to_remove)
 
     return graph_segmented
 
