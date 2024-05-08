@@ -217,8 +217,6 @@ class SpatialTemporalGraph(nx.Graph):
         for hyperedge, initial_edges in hyperedges_initial_edges.items():
             nodes_hyperedge = np.array(initial_edges).flatten()
             nodes, count = np.unique(nodes_hyperedge, return_counts=True)
-            print(count)
-            print(hyperedge, initial_edges)
 
             if nodes[count % 2 == 1].size != 2:
                 first_node, last_node = nodes[0], nodes[0]
