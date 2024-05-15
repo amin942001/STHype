@@ -33,6 +33,7 @@ class SpatialTemporalGraph(nx.Graph):
 
         super().__init__(incoming_graph_data, **attr)
 
+        self.max_age = self.get_max_age()
         self._initial_edges_edges_gathered = False
         self.initial_edges_edges: dict[InitialEdge, list[Edge]] = (
             self.get_initial_edges_edges()
@@ -47,6 +48,19 @@ class SpatialTemporalGraph(nx.Graph):
         self.hyperedges_initial_edges: dict[HyperEdge, list[Edge]] = (
             self.get_hyperedges_initial_edges()
         )
+
+    def get_max_age(self) -> int:
+        """Return the maximum activation in edges
+
+        Returns
+        -------
+        int
+            The maximum
+        """
+        max_age = 0
+        for _, _, edge_data in self.edges(data=True):
+            max_age = np.max((max_age, edge_data["activation"]))
+        return max_age
 
     def get_initial_edges_edges(self) -> dict[InitialEdge, list[Edge]]:
         """Return a dict with initial_edge as attribute and list of edge as value
@@ -134,20 +148,27 @@ class SpatialTemporalGraph(nx.Graph):
         self._initial_edges_edges_gathered = False
         self._hyperedges_initial_edges_gathered = False
 
-    def get_initial_graph(self):
+    def get_initial_graph(self) -> nx.Graph:
+        """Return the graph formed by initial edges
+
+        Returns
+        -------
+        nx.Graph
+            initial edges graph
+        """
         if self._initial_graph_gathered:
             return self.initial_graph
         initial_graph = nx.Graph()
         for initial_edge in self.initial_edges_edges:
             first_edge_node1, first_edge_node2 = self.initial_edges_edges[initial_edge][
-                0
+                len(self.initial_edges_edges[initial_edge]) // 2
             ]
             attributes = self[first_edge_node1][first_edge_node2]
             initial_graph.add_edge(
                 *initial_edge,
                 edges=self.initial_edges_edges[initial_edge],
                 time_interval=self.initial_edges_time_interval[initial_edge],
-                **attributes
+                **attributes,
             )
         nx.set_node_attributes(initial_graph, self.positions, "position")
 
@@ -155,7 +176,15 @@ class SpatialTemporalGraph(nx.Graph):
         self._initial_graph_gathered = True
         return initial_graph
 
-    def get_hyperedges_initial_edges(self):
+    def get_hyperedges_initial_edges(self) -> dict[HyperEdge, list[InitialEdge]]:
+        """Return a dict with hyperedges as key
+        and the list of initial edge forming them as value
+
+        Returns
+        -------
+        dict[HyperEdge, list[InitialEdge]]
+            The dict
+        """
         if self._hyperedges_initial_edges_gathered:
             return self.hyperedges_initial_edges
         Cor: dict[InitialEdge, list[InitialEdge]] = {
@@ -266,8 +295,68 @@ class SpatialTemporalGraph(nx.Graph):
         return [edge[::-1] for edge in reversed(self.initial_edges_edges[node2, node1])]
 
     def get_hyperedge_edges(self, hyperedge: HyperEdge) -> list[Edge]:
+        """Get the edges of an hyperedge ordered
+
+        Parameters
+        ----------
+        hyperedge : HyperEdge
+            The hyperedge
+
+        Returns
+        -------
+        list[Edge]
+            the list of edge forming the hyperedge
+        """
         hyperedge_initial_edges = self.get_hyperedges_initial_edges()[hyperedge]
         hyperedge_edges: list[Edge] = []
         for initial_edge in hyperedge_initial_edges:
             hyperedge_edges.extend(self.get_initial_edge_edges(*initial_edge))
         return hyperedge_edges
+
+    def get_edge_attribute_list(self, node1: int, node2: int, attribute) -> list:
+        """Return a list of attribute through time of an edge
+
+        Parameters
+        ----------
+        node1 : int
+            first node
+        node2 : int
+            second node
+        attribute : any
+            the attribute
+
+        Returns
+        -------
+        list
+            the list of attribute
+        """
+        l = []
+        for time in range(self.max_age + 1):
+            l.append(self[node1][node2][f"{time}"].get(attribute))
+
+        return l
+
+    def get_initial_edge_attribute_list(
+        self, node1: int, node2: int, attribute
+    ) -> list:
+        """Return a list of attribute through time of an initial_edge
+
+        Parameters
+        ----------
+        node1 : int
+            first node
+        node2 : int
+            second node
+        attribute : any
+            the attribute
+
+        Returns
+        -------
+        list
+            the list of attribute
+        """
+        l = []
+        for time in range(self.max_age + 1):
+            l.append(self.get_initial_graph()[node1][node2][f"{time}"].get(attribute))
+
+        return l
