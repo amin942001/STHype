@@ -7,7 +7,7 @@ from .utils import in_region, random_color
 
 def plot_spatial_temporal_graph(
     stg: SpatialTemporalGraph,
-    color_group: str = "uniform",
+    color_group: str | int = "uniform",
     time: int = -1,
     region: None | tuple[tuple[float, float], tuple[float, float]] = None,
     add_nodes: bool = False,
@@ -20,9 +20,10 @@ def plot_spatial_temporal_graph(
     ----------
     stg : SpatialTemporalGraph
         Spatial Temporal Graph to plot
-    color_group : str, optional
+    color_group : str | int, optional
         color group to color edge: 'random'/'edge', 'activation',
-        'initial_edge', 'hyperedge'. By default "uniform"
+        'initial_edge', 'hyperedge'. If int, color the corresponding hyperedge in red.
+        By default "uniform"
     time : int, optional
         Plot Spatial Temporal Graph at time t, by default -1
     region : None | tuple[tuple[float, float], tuple[float, float]], optional
@@ -75,6 +76,11 @@ def plot_spatial_temporal_graph(
         }
         colors = [
             colors_dict[stg[node1][node2]["hyperedge"]] for node1, node2 in edgelist
+        ]
+    elif type(color_group) == int:
+        colors = [
+            "red" if stg[node1][node2]["hyperedge"] == color_group else "blue"
+            for node1, node2 in edgelist
         ]
     else:
         colors = "k"
