@@ -1,10 +1,8 @@
 """Functions to create an hypergraph from time correlated graphs"""
 
-from functools import partial
-from multiprocessing import Pool
-
 import networkx as nx
-from shapely import MultiLineString, MultiPoint, Point
+import numpy as np
+from shapely import LineString, MultiPoint, Point, get_coordinates
 from shapely.ops import nearest_points
 
 from .. import HyperGraph, SpatialGraph, SpatialTemporalGraph
@@ -92,7 +90,8 @@ def graph_segmentation(
     -------
     nx.Graph
         The segmented graph.
-        Edge have attribute center and there initial edge as a set : {node1, node2}.
+        Edge have attribute center and there initial edge as a set({node1, node2})
+        and there initial edge attributes as a dict.
         Node have attribute position
     """
     label: int = max(spatial_graph.nodes) + 1
@@ -132,7 +131,11 @@ def graph_segmentation(
             if index == len(new_edges_center) - 1:
                 end = node2
             graph_segmented.add_edge(
-                start, end, center=center, initial_edge={node1, node2}, **edge_data
+                start,
+                end,
+                center=center,
+                initial_edge={node1, node2},
+                initial_edge_attributes=edge_data,
             )
             nodes_position[start] = new_nodes[index]
             nodes_position[end] = new_nodes[index + 1]
@@ -187,48 +190,77 @@ def graph_segmentation(
 
 
 def segmented_skeleton(
-    spatial_graph: SpatialGraph, tolerance: float = 5
-) -> MultiLineString:
+    spatial_graph: SpatialGraph, threshold: float = 10, tolerance: float = 5
+) -> dict[tuple[int, int], list[tuple[LineString, tuple[int, int]]]]:
     """Return a simplified SpatialGraph skeleton using Ramer–Douglas–Peucker algorithm
 
     Parameters
     ----------
     spatial_graph : SpatialGraph
         SpatialGraph to extract the skeleton from
+    threshold : float, optional
+        The threshold at which you can say that two points are the same, by default 10
     tolerance : float, optional
         tolerance when applying Ramer–Douglas–Peucker algorithm, by default 5
 
     Returns
     -------
-    MultiLineString
-        The simplified skeleton
+    dict[tuple[int, int], list[tuple[LineString, tuple[int, int]]]]
+        The simplified skeleton (the keys are the batches)
     """
-    lines = MultiLineString(
-        [
-            spatial_graph.edge_pixels(node1, node2)
-            for node1, node2 in spatial_graph.edges
-        ]
-    )
+    skeleton: dict[tuple[int, int], list[tuple[LineString, tuple[int, int]]]] = {}
+    for edge in spatial_graph.edges():
+        coordinates: np.ndarray = get_coordinates(
+            spatial_graph.edge_pixels(*edge).simplify(tolerance).segmentize(threshold)
+        )
+        for line in zip(coordinates[:-1], coordinates[1:]):
+            key = tuple((line[0] // threshold).astype(int))
+            skeleton.setdefault(key, []).append((LineString(line), edge))
 
-    return lines.simplify(tolerance)
+    return skeleton
 
 
-def closest_point_from_skeleton(point: Point, skeleton: MultiLineString) -> Point:
+def closest_point_from_skeleton(
+    point: Point,
+    skeleton: dict[tuple[int, int], list[tuple[LineString, tuple[int, int]]]],
+    threshold: float = 10,
+) -> tuple[Point, tuple[int, int], float]:
     """Closest point of a skeleton from a point
 
     Parameters
     ----------
     point : Point
         The point
-    skeleton : MultiLineString
+    skeleton : dict[tuple[int, int], list[tuple[LineString, tuple[int, int]]]]
         The skeleton
+    threshold : int, optional
+        The threshold at which you can say that two points are the same, by default 10
 
     Returns
     -------
     Point
         Closest point of skeleton from point
     """
-    return nearest_points(point, skeleton)[1]
+    key_x, key_y = int(point.x // threshold), int(point.y // threshold)
+    closest_lines: list[tuple[LineString, tuple[int, int]]] = []
+    for x in range(-2, 3):
+        for y in range(-2, 3):
+            closest_lines.extend(skeleton.get((key_x + x, key_y + y), []))
+
+    minimal_distance = threshold
+    closest_edge = None
+    closest_line = None
+    for line, edge in closest_lines:
+        distance = line.distance(point)
+        if distance <= minimal_distance:
+            closest_line = line
+            closest_edge = edge
+            minimal_distance = distance
+
+    if closest_line is None:
+        return None, None, None
+
+    return nearest_points(point, closest_line)[1], closest_edge, minimal_distance
 
 
 def segmented_graph_activation(
@@ -252,7 +284,7 @@ def segmented_graph_activation(
         Timestamps of the graphs used to calculate growth speed, ...
     threshold : float, optional
         The threshold at which you can say that two points are the same, by default 10
-    threshold : float, optional
+    tolerance : float, optional
         Tolerance of Ramer–Douglas–Peucker algorithm to have a simplified skeleton,
         should be less then threshold, by default 5
     verbose : int, optional
@@ -265,7 +297,6 @@ def segmented_graph_activation(
     """
     for node1, node2 in segmented_graph.edges:
         segmented_graph[node1][node2]["centers"] = []
-        segmented_graph[node1][node2]["centers_distance"] = []
         segmented_graph[node1][node2]["activation"] = timestamps[
             len(spatial_graphs) - 1
         ]
@@ -273,9 +304,9 @@ def segmented_graph_activation(
     for time, spatial_graph in reversed(list(enumerate(spatial_graphs))):
         if verbose > 0:
             print(f"Comparing with graph {time}")
-        skeleton = segmented_skeleton(spatial_graph, tolerance)
+        skeleton = segmented_skeleton(spatial_graph, threshold, tolerance)
 
-        centers: list[Point] = []
+        centers: list[tuple[Point, tuple[int, int], float]] = []
         for _, _, edge_data in segmented_graph.edges(data=True):
             if edge_data["centers"]:
                 center: Point = edge_data["centers"][-1]
@@ -283,21 +314,22 @@ def segmented_graph_activation(
                 center: Point = edge_data["center"]
             centers.append(center)
 
-        with Pool() as p:
-            closest_points: list[Point] = p.map(
-                partial(closest_point_from_skeleton, skeleton=skeleton), centers
-            )
+        closest_points = [
+            closest_point_from_skeleton(center, skeleton, threshold)
+            for center in centers
+        ]
 
-        for center, closest_point, (node1, node2) in zip(
+        for center, (closest_point, closest_edge, distance), (node1, node2) in zip(
             centers, closest_points, segmented_graph.edges
         ):
-            distance: float = center.distance(closest_point)
-
-            segmented_graph[node1][node2]["centers_distance"].append(distance)
-            if distance < threshold:
+            if distance is None:
+                segmented_graph[node1][node2]["centers"].append(center)
+                segmented_graph[node1][node2][f"time_step_{time}_attributes"] = {}
+            else:
                 segmented_graph[node1][node2]["centers"].append(closest_point)
                 segmented_graph[node1][node2]["activation"] = timestamps[time]
-            else:
-                segmented_graph[node1][node2]["centers"].append(center)
+                segmented_graph[node1][node2][f"time_step_{time}_attributes"] = (
+                    spatial_graph[closest_edge[0]][closest_edge[1]]
+                )
 
     return segmented_graph
