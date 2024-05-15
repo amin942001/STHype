@@ -140,7 +140,7 @@ class SpatialTemporalGraph(nx.Graph):
         initial_graph = nx.Graph()
         for initial_edge in self.initial_edges_edges:
             first_edge_node1, first_edge_node2 = self.initial_edges_edges[initial_edge][
-                0
+                len(self.initial_edges_edges[initial_edge]) // 2
             ]
             attributes = self[first_edge_node1][first_edge_node2]
             initial_graph.add_edge(
