@@ -77,7 +77,7 @@ def plot_spatial_temporal_graph(
         colors = [
             colors_dict[stg[node1][node2]["hyperedge"]] for node1, node2 in edgelist
         ]
-    elif type(color_group) == int:
+    elif isinstance(color_group, int):
         colors = [
             "red" if stg[node1][node2]["hyperedge"] == color_group else "blue"
             for node1, node2 in edgelist
