@@ -330,11 +330,11 @@ class SpatialTemporalGraph(nx.Graph):
         list
             the list of attribute
         """
-        l = []
+        attribute_list = []
         for time in range(self.max_age + 1):
-            l.append(self[node1][node2][f"{time}"].get(attribute))
+            attribute_list.append(self[node1][node2][f"{time}"].get(attribute))
 
-        return l
+        return attribute_list
 
     def get_initial_edge_attribute_list(
         self, node1: int, node2: int, attribute
@@ -355,8 +355,10 @@ class SpatialTemporalGraph(nx.Graph):
         list
             the list of attribute
         """
-        l = []
+        attribute_list = []
         for time in range(self.max_age + 1):
-            l.append(self.get_initial_graph()[node1][node2][f"{time}"].get(attribute))
+            attribute_list.append(
+                self.get_initial_graph()[node1][node2][f"{time}"].get(attribute)
+            )
 
-        return l
+        return attribute_list
