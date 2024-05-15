@@ -324,12 +324,12 @@ def segmented_graph_activation(
         ):
             if distance is None:
                 segmented_graph[node1][node2]["centers"].append(center)
-                segmented_graph[node1][node2][f"time_step_{time}_attributes"] = {}
+                segmented_graph[node1][node2][time] = {}
             else:
                 segmented_graph[node1][node2]["centers"].append(closest_point)
                 segmented_graph[node1][node2]["activation"] = timestamps[time]
-                segmented_graph[node1][node2][f"time_step_{time}_attributes"] = (
-                    spatial_graph[closest_edge[0]][closest_edge[1]]
-                )
+                segmented_graph[node1][node2][time] = spatial_graph[closest_edge[0]][
+                    closest_edge[1]
+                ]
 
     return segmented_graph
