@@ -56,7 +56,7 @@ def plot_spatial_temporal_graph(
         activations = [
             stg[node1][node2]["corrected_activation"] for node1, node2 in edgelist
         ]
-        max_activation = max(activations)
+        max_activation = stg.max_age
         colors = [cm.viridis(activation / max_activation) for activation in activations]
     elif color_group == "initial_edge":
         colors_dict = {
