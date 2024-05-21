@@ -294,6 +294,21 @@ class SpatialTemporalGraph(nx.Graph):
             return self.initial_edges_edges[node1, node2]
         return [edge[::-1] for edge in reversed(self.initial_edges_edges[node2, node1])]
 
+    def get_hyperedge_initial_edges(self, hyperedge: HyperEdge) -> list[InitialEdge]:
+        """Get the initial edges of an hyperedge ordered
+
+        Parameters
+        ----------
+        hyperedge : HyperEdge
+            The hyperedge
+
+        Returns
+        -------
+        list[InitialEdge]
+            the list of initial edges forming the hyperedge
+        """
+        return self.get_hyperedges_initial_edges()[hyperedge]
+
     def get_hyperedge_edges(self, hyperedge: HyperEdge) -> list[Edge]:
         """Get the edges of an hyperedge ordered
 
@@ -305,9 +320,9 @@ class SpatialTemporalGraph(nx.Graph):
         Returns
         -------
         list[Edge]
-            the list of edge forming the hyperedge
+            the list of edges forming the hyperedge
         """
-        hyperedge_initial_edges = self.get_hyperedges_initial_edges()[hyperedge]
+        hyperedge_initial_edges = self.get_hyperedge_initial_edges(hyperedge)
         hyperedge_edges: list[Edge] = []
         for initial_edge in hyperedge_initial_edges:
             hyperedge_edges.extend(self.get_initial_edge_edges(*initial_edge))

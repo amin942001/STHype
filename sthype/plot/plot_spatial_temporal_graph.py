@@ -12,7 +12,7 @@ def plot_spatial_temporal_graph(
     region: None | tuple[tuple[float, float], tuple[float, float]] = None,
     add_nodes: bool = False,
     add_initial_nodes: bool = False,
-    **kwargs
+    **kwargs,
 ):
     """Plot Spatial Temporal Graph
 
@@ -93,7 +93,7 @@ def plot_spatial_temporal_graph(
         nodelist=[],
         edgelist=edgelist,
         edge_color=colors,
-        **kwargs
+        **kwargs,
     )
 
     if add_initial_nodes:
@@ -128,3 +128,41 @@ def plot_spatial_temporal_graph_node(
         (x + area_size / 2, y + area_size / 2),
     )
     plot_spatial_temporal_graph(stg=stg, region=region, **kwargs)
+
+
+def plot_spatial_temporal_graph_hyperedge(
+    stg: SpatialTemporalGraph,
+    hyperedge: int,
+    scale: float = 1.50,
+    verbose: int = 0,
+    **kwargs,
+):
+    """Plot a Spatial Temporal Graph around one of its node
+
+    Parameters
+    ----------
+    stg : SpatialTemporalGraph
+        Spatial Temporal Graph to plot
+    node : int
+        Node to plot around
+    area_size : float, optional
+        Size of the zone around the zone to plot, by default 100
+    """
+    hyperedge_initial_edges = stg.get_hyperedge_initial_edges(hyperedge)
+    positions_x = [stg.positions[node].x for node, _ in hyperedge_initial_edges] + [
+        stg.positions[node].x for _, node in hyperedge_initial_edges
+    ]
+    positions_y = [stg.positions[node].y for node, _ in hyperedge_initial_edges] + [
+        stg.positions[node].y for _, node in hyperedge_initial_edges
+    ]
+    min_x, max_x = min(positions_x), max(positions_x)
+    diff_x_to_add = (max_x - min_x) * (scale - 1) / 2
+    min_y, max_y = min(positions_y), max(positions_y)
+    diff_y_to_add = (max_y - min_y) * (scale - 1) / 2
+    region = (
+        (min_x - diff_x_to_add, min_y - diff_y_to_add),
+        (max_x + diff_x_to_add, max_y + diff_y_to_add),
+    )
+    if verbose > 0:
+        print(f"{region}")
+    plot_spatial_temporal_graph(stg=stg, region=region, color_group=hyperedge, **kwargs)
