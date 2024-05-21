@@ -285,9 +285,7 @@ class SpatialTemporalGraph(nx.Graph):
             indexes_initial_edges: list[int] = []
             activs: list[int] = []
             for initial_edge in initial_edges:
-                for index, (node1, node2) in enumerate(
-                    self.get_initial_edge_edges(*initial_edge)
-                ):
+                for node1, node2 in self.get_initial_edge_edges(*initial_edge):
                     edges.append((node1, node2))
                     activs.append(self[node1][node2]["corrected_activation"])
                 indexes_initial_edges.append(len(activs))
