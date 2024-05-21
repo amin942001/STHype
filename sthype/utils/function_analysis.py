@@ -50,3 +50,29 @@ def to_monotonic(array_to_transform: np.ndarray) -> np.ndarray:
                 -1 - floor_end_length
             ]
     return array_to_transform
+
+
+def breakable_into_two_monotonic(array_to_test: np.ndarray, indexes: list[int]) -> int:
+    """If an array can be split into two monotonic list at one of the index of indexes,
+    return the index relative to indexes, else return -1
+
+    Parameters
+    ----------
+    array_to_test : np.ndarray
+        The array to split
+    indexes : list[int]
+        the index to split
+
+    Returns
+    -------
+    int
+        if one index split into two monotonic array,
+        return the index relative to indexes, else return -1
+    """
+    for index, index_to_test in enumerate(indexes):
+        if is_monotonic(array_to_test[:index_to_test]) and is_monotonic(
+            array_to_test[index_to_test:]
+        ):
+            return index
+
+    return -1

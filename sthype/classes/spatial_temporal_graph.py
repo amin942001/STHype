@@ -3,7 +3,7 @@ import numpy as np
 from scipy.ndimage import median_filter
 from shapely import Point
 
-from ..utils import to_monotonic
+from ..utils import breakable_into_two_monotonic, is_monotonic, to_monotonic
 from .utils.hyperedge import edge_matches_time_angle
 
 Edge = tuple[int, int]
@@ -48,6 +48,7 @@ class SpatialTemporalGraph(nx.Graph):
         self.hyperedges_initial_edges: dict[HyperEdge, list[Edge]] = (
             self.get_hyperedges_initial_edges()
         )
+        self.correct_activations_post_hyperedge(smoothing=2 * smoothing - 1)
 
     def get_max_age(self) -> int:
         """Return the maximum activation in edges
@@ -275,6 +276,109 @@ class SpatialTemporalGraph(nx.Graph):
         self._hyperedges_initial_edges_gathered = True
         return ordered_hyperedges_initial_edges
 
+    def correct_activations_post_hyperedge(self, smoothing: int = 21):
+        new_hyperedge = max(self.hyperedges_initial_edges) + 1
+        new_hyperedges_initial_edges = self.hyperedges_initial_edges.copy()
+        for hyperedge, initial_edges in self.hyperedges_initial_edges.items():
+            edges: list[Edge] = []
+
+            indexes_initial_edges: list[int] = []
+            activs: list[int] = []
+            for initial_edge in initial_edges:
+                for index, (node1, node2) in enumerate(
+                    self.get_initial_edge_edges(*initial_edge)
+                ):
+                    edges.append((node1, node2))
+                    activs.append(self[node1][node2]["corrected_activation"])
+                indexes_initial_edges.append(len(activs))
+            indexes_initial_edges.pop()
+            activations = np.array(activs)
+
+            if is_monotonic(activations):
+                for activation, (node1, node2) in zip(activations, edges):
+                    self[node1][node2]["post_hyperedge_activation"] = activation
+                continue
+
+            activations_med_fil = median_filter(activations, smoothing)
+            if is_monotonic(activations_med_fil):
+                if (activations_med_fil == activations_med_fil[0]).all():
+                    break_point = breakable_into_two_monotonic(
+                        activations, indexes_initial_edges
+                    )
+                    if break_point >= 0:
+                        new_hyperedges_initial_edges[hyperedge] = []
+                        new_hyperedges_initial_edges[new_hyperedge] = []
+                        for index_initial_edge, initial_edge in enumerate(
+                            initial_edges
+                        ):
+                            if index_initial_edge <= break_point:
+                                new_hyperedges_initial_edges[new_hyperedge].append(
+                                    initial_edge
+                                )
+                                self.initial_graph[initial_edge[0]][initial_edge[1]][
+                                    "hyperedge"
+                                ] = new_hyperedge
+                                for node1, node2 in self.get_initial_edge_edges(
+                                    *initial_edge
+                                ):
+                                    self[node1][node2]["hyperedge"] = new_hyperedge
+                            else:
+                                new_hyperedges_initial_edges[hyperedge].append(
+                                    initial_edge
+                                )
+                            for node1, node2 in self.get_initial_edge_edges(
+                                *initial_edge
+                            ):
+                                self[node1][node2]["post_hyperedge_activation"] = self[
+                                    node1
+                                ][node2]["corrected_activation"]
+                        new_hyperedge += 1
+                        continue
+
+                for activation, (node1, node2) in zip(activations_med_fil, edges):
+                    self[node1][node2]["post_hyperedge_activation"] = activation
+                continue
+
+            break_point = breakable_into_two_monotonic(
+                activations, indexes_initial_edges
+            )
+            if break_point >= 0:
+                new_hyperedges_initial_edges[hyperedge] = []
+                new_hyperedges_initial_edges[new_hyperedge] = []
+                for index_initial_edge, initial_edge in enumerate(initial_edges):
+                    if index_initial_edge <= break_point:
+                        new_hyperedges_initial_edges[new_hyperedge].append(initial_edge)
+                        self.initial_graph[initial_edge[0]][initial_edge[1]][
+                            "hyperedge"
+                        ] = new_hyperedge
+                        for node1, node2 in self.get_initial_edge_edges(*initial_edge):
+                            self[node1][node2]["hyperedge"] = new_hyperedge
+                    else:
+                        new_hyperedges_initial_edges[hyperedge].append(initial_edge)
+                    for node1, node2 in self.get_initial_edge_edges(*initial_edge):
+                        self[node1][node2]["post_hyperedge_activation"] = self[node1][
+                            node2
+                        ]["corrected_activation"]
+                new_hyperedge += 1
+                continue
+
+            new_smoothing = smoothing + 2
+            while not (is_monotonic(activations_med_fil)):
+                activations_med_fil = median_filter(activations, new_smoothing)
+                new_smoothing += 2
+
+            for activation, (node1, node2) in zip(activations_med_fil, edges):
+                self[node1][node2]["post_hyperedge_activation"] = activation
+            continue
+
+        for node1, node2, edge_data in self.edges(data=True):
+            if "post_hyperedge_activation" not in edge_data:
+                self[node1][node2]["post_hyperedge_activation"] = self[node1][node2][
+                    "corrected_activation"
+                ]
+
+        self.hyperedges_initial_edges = new_hyperedges_initial_edges
+
     def get_initial_edge_edges(self, node1: int, node2: int) -> list[Edge]:
         """Return the edges of an initial_edge from node1 to node2
 
@@ -294,6 +398,21 @@ class SpatialTemporalGraph(nx.Graph):
             return self.initial_edges_edges[node1, node2]
         return [edge[::-1] for edge in reversed(self.initial_edges_edges[node2, node1])]
 
+    def get_hyperedge_initial_edges(self, hyperedge: HyperEdge) -> list[InitialEdge]:
+        """Get the initial edges of an hyperedge ordered
+
+        Parameters
+        ----------
+        hyperedge : HyperEdge
+            The hyperedge
+
+        Returns
+        -------
+        list[InitialEdge]
+            the list of initial edges forming the hyperedge
+        """
+        return self.get_hyperedges_initial_edges()[hyperedge]
+
     def get_hyperedge_edges(self, hyperedge: HyperEdge) -> list[Edge]:
         """Get the edges of an hyperedge ordered
 
@@ -305,9 +424,9 @@ class SpatialTemporalGraph(nx.Graph):
         Returns
         -------
         list[Edge]
-            the list of edge forming the hyperedge
+            the list of edges forming the hyperedge
         """
-        hyperedge_initial_edges = self.get_hyperedges_initial_edges()[hyperedge]
+        hyperedge_initial_edges = self.get_hyperedge_initial_edges(hyperedge)
         hyperedge_edges: list[Edge] = []
         for initial_edge in hyperedge_initial_edges:
             hyperedge_edges.extend(self.get_initial_edge_edges(*initial_edge))
