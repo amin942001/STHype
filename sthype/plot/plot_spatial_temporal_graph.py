@@ -47,14 +47,14 @@ def plot_spatial_temporal_graph(
         edgelist = [
             edge
             for edge in edgelist
-            if stg[edge[0]][edge[1]]["corrected_activation"] <= time
+            if stg[edge[0]][edge[1]]["post_hyperedge_activation"] <= time
         ]
 
     if color_group == "random" or color_group == "edge":
         colors = [random_color() for _ in edgelist]
     elif color_group == "activation":
         activations = [
-            stg[node1][node2]["corrected_activation"] for node1, node2 in edgelist
+            stg[node1][node2]["post_hyperedge_activation"] for node1, node2 in edgelist
         ]
         max_activation = stg.max_age
         colors = [cm.viridis(activation / max_activation) for activation in activations]
