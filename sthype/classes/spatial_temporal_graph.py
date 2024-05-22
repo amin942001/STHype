@@ -45,10 +45,12 @@ class SpatialTemporalGraph(nx.Graph):
         self.initial_graph = self.get_initial_graph()
 
         self._hyperedges_initial_edges_gathered = False
-        self.hyperedges_initial_edges: dict[HyperEdge, list[Edge]] = (
+        self.hyperedges_initial_edges: dict[HyperEdge, list[InitialEdge]] = (
             self.get_hyperedges_initial_edges()
         )
         self.correct_activations_post_hyperedge(smoothing=2 * smoothing - 1)
+        self._directed_graph_gathered = False
+        self.directed_graph = self.get_directed_graph()
 
     def get_max_age(self) -> int:
         """Return the maximum activation in edges
@@ -277,6 +279,13 @@ class SpatialTemporalGraph(nx.Graph):
         return ordered_hyperedges_initial_edges
 
     def correct_activations_post_hyperedge(self, smoothing: int = 21):
+        """Correct the activation and hyperedges
+
+        Parameters
+        ----------
+        smoothing : int, optional
+            The smoothing for median filter, by default 21
+        """
         new_hyperedge = max(self.hyperedges_initial_edges) + 1
         new_hyperedges_initial_edges = self.hyperedges_initial_edges.copy()
         for hyperedge, initial_edges in self.hyperedges_initial_edges.items():
@@ -376,6 +385,37 @@ class SpatialTemporalGraph(nx.Graph):
                 ]
 
         self.hyperedges_initial_edges = new_hyperedges_initial_edges
+
+    def get_directed_graph(self) -> nx.DiGraph:
+        """Get directed graph
+
+        Returns
+        -------
+        nx.DiGraph
+            The directed graph
+        """
+        if self._directed_graph_gathered:
+            return self.directed_graph
+
+        di_graph = nx.DiGraph()
+        for initial_edges in self.hyperedges_initial_edges.values():
+            left_edge = self.get_initial_edge_edges(*initial_edges[0])[0]
+            right_edge = self.get_initial_edge_edges(*initial_edges[-1])[-1]
+            left_time = self[left_edge[0]][left_edge[1]]["post_hyperedge_activation"]
+            right_time = self[right_edge[0]][right_edge[1]]["post_hyperedge_activation"]
+            if left_time < right_time or (
+                left_time == right_time
+                and self.degree[self.get_initial_edge_edges(*initial_edges[-1])[-1][1]]
+                <= self.degree[self.get_initial_edge_edges(*initial_edges[0])[0][0]]
+            ):
+                for node1, node2 in initial_edges:
+                    di_graph.add_edge(node1, node2, **self.initial_graph[node1][node2])
+            else:
+                for node1, node2 in initial_edges:
+                    di_graph.add_edge(node2, node1, **self.initial_graph[node1][node2])
+        nx.set_node_attributes(di_graph, self.positions, "position")
+
+        return di_graph
 
     def get_initial_edge_edges(self, node1: int, node2: int) -> list[Edge]:
         """Return the edges of an initial_edge from node1 to node2
@@ -479,3 +519,55 @@ class SpatialTemporalGraph(nx.Graph):
             )
 
         return attribute_list
+
+    def get_graph_at(self, time: int) -> nx.Graph:
+        """Get graph at time t
+
+        Parameters
+        ----------
+        time : int
+            the time
+
+        Returns
+        -------
+        nx.Graph
+            the initial graph at time t
+        """
+        graph = nx.Graph()
+
+        for hyperedge, initial_edges in self.hyperedges_initial_edges.items():
+            for initial_edge in initial_edges:
+                edges = self.get_initial_edge_edges(*initial_edge)
+                activation = self[edges[0][0]][edges[0][1]]["post_hyperedge_activation"]
+                begin = edges[0][0]
+                pixels: list[Point] = [self.positions[begin]]
+                attributes = {}
+                for node1, node2 in edges:
+                    if self[node1][node2]["post_hyperedge_activation"] != activation:
+                        graph.add_edge(
+                            begin,
+                            end,
+                            pixels=pixels,
+                            activation=activation,
+                            hyperedge=hyperedge,
+                            attributes=attributes,
+                        )
+                        activation = self[node1][node2]["post_hyperedge_activation"]
+                        begin = node1
+                        pixels: list[Point] = [self.positions[begin]]
+                        attributes = {}
+                    end = node2
+                    for key, value in self[node1][node2][f"{time}"].items():
+                        if key != "pixels":
+                            attributes.setdefault(key, []).append(value)
+                    pixels.append(self.positions[node2])
+                graph.add_edge(
+                    begin,
+                    end,
+                    pixels=pixels,
+                    activation=activation,
+                    attributes=attributes,
+                )
+        nx.set_node_attributes(graph, self.positions, "position")
+
+        return graph
