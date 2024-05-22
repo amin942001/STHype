@@ -279,6 +279,13 @@ class SpatialTemporalGraph(nx.Graph):
         return ordered_hyperedges_initial_edges
 
     def correct_activations_post_hyperedge(self, smoothing: int = 21):
+        """Correct the activation and hyperedges
+
+        Parameters
+        ----------
+        smoothing : int, optional
+            The smoothing for median filter, by default 21
+        """
         new_hyperedge = max(self.hyperedges_initial_edges) + 1
         new_hyperedges_initial_edges = self.hyperedges_initial_edges.copy()
         for hyperedge, initial_edges in self.hyperedges_initial_edges.items():
@@ -380,6 +387,13 @@ class SpatialTemporalGraph(nx.Graph):
         self.hyperedges_initial_edges = new_hyperedges_initial_edges
 
     def get_directed_graph(self) -> nx.DiGraph:
+        """Get directed graph
+
+        Returns
+        -------
+        nx.DiGraph
+            The directed graph
+        """
         if self._directed_graph_gathered:
             return self.directed_graph
 
@@ -507,6 +521,18 @@ class SpatialTemporalGraph(nx.Graph):
         return attribute_list
 
     def get_graph_at(self, time: int) -> nx.Graph:
+        """Get graph at time t
+
+        Parameters
+        ----------
+        time : int
+            the time
+
+        Returns
+        -------
+        nx.Graph
+            the initial graph at time t
+        """
         graph = nx.Graph()
 
         for hyperedge, initial_edges in self.hyperedges_initial_edges.items():
