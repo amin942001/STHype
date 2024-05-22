@@ -540,6 +540,7 @@ class SpatialTemporalGraph(nx.Graph):
                 edges = self.get_initial_edge_edges(*initial_edge)
                 activation = self[edges[0][0]][edges[0][1]]["post_hyperedge_activation"]
                 begin = edges[0][0]
+                end = edges[0][1]
                 pixels: list[Point] = [self.positions[begin]]
                 attributes = {}
                 for node1, node2 in edges:
