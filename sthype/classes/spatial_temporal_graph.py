@@ -369,10 +369,7 @@ class SpatialTemporalGraph(nx.Graph):
                 new_hyperedge += 1
                 continue
 
-            new_smoothing = smoothing + 2
-            while not (is_monotonic(activations_med_fil)):
-                activations_med_fil = median_filter(activations, new_smoothing)
-                new_smoothing += 2
+            activations_med_fil = np.median(activations) * np.ones(len(activations))
 
             for activation, (node1, node2) in zip(activations_med_fil, edges):
                 self[node1][node2]["post_hyperedge_activation"] = activation
