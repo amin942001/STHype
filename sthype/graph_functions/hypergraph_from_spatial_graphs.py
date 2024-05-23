@@ -130,12 +130,15 @@ def graph_segmentation(
                 start = node1
             if index == len(new_edges_center) - 1:
                 end = node2
+            initial_edge_attributes = {
+                k: v for k, v in edge_data.items() if k != "pixels"
+            }
             graph_segmented.add_edge(
                 start,
                 end,
                 center=center,
                 initial_edge={node1, node2},
-                initial_edge_attributes=edge_data,
+                initial_edge_attributes=initial_edge_attributes,
             )
             nodes_position[start] = new_nodes[index]
             nodes_position[end] = new_nodes[index + 1]
@@ -330,8 +333,10 @@ def segmented_graph_activation(
                 segmented_graph[node1][node2]["centers"].append(closest_point)
                 segmented_graph[node1][node2]["activation"] = time
                 segmented_graph[node1][node2]["activation_timestamp"] = timestamps[time]
-                segmented_graph[node1][node2][f"{time}"] = spatial_graph[
-                    closest_edge[0]
-                ][closest_edge[1]]
+                segmented_graph[node1][node2][f"{time}"] = {
+                    k: v
+                    for k, v in spatial_graph[closest_edge[0]][closest_edge[1]].items()
+                    if k != "pixels"
+                }
 
     return segmented_graph
