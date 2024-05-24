@@ -57,6 +57,7 @@ def edge_matches_time_angle(
         node for node, time in nodes_times.items() if time == second_min_time
     ]
     best_score = -np.pi
+    node2 = second_time_nodes[0]
     for node in second_time_nodes:
         score = score_angle(
             positions[node1], positions[node], positions[node_intersection]
