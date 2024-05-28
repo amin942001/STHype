@@ -12,7 +12,9 @@ def angle_point(point1: Point, point2: Point, intersection_point: Point):
     if (ba == 0).all() or (bc == 0).all():
         return 0
 
-    cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+    cosine_angle = np.clip(
+        np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc)), -1, 1
+    )
     return np.arccos(cosine_angle)
 
 

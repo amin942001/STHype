@@ -306,7 +306,9 @@ class SpatialTemporalGraph(nx.Graph):
                     self[node1][node2]["post_hyperedge_activation"] = activation
                 continue
 
-            activations_med_fil = median_filter(activations, smoothing)
+            activations_med_fil = median_filter(
+                activations, np.max((smoothing, len(activations))), mode="nearest"
+            )
             if is_monotonic(activations_med_fil):
                 if (activations_med_fil == activations_med_fil[0]).all():
                     break_point = breakable_into_two_monotonic(
