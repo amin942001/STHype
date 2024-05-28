@@ -27,9 +27,9 @@ class SpatialGraph(nx.Graph):
             node: Point(position) for node, position in node_positions.items()
         }
 
-        self.undirected_graph = self.spatial_undirected_graph()
+        self.directed_graph = self.spatial_directed_graph()
 
-    def spatial_undirected_graph(self) -> nx.DiGraph:
+    def spatial_directed_graph(self) -> nx.DiGraph:
         """Return a directed graph used to have pixels ordered for each edge
 
         Returns
@@ -44,7 +44,7 @@ class SpatialGraph(nx.Graph):
             boundary should match the nodes positions of the edge
         """
         positions = self.positions
-        undirected_graph = nx.DiGraph()
+        directed_graph = nx.DiGraph()
 
         node1: int
         node2: int
@@ -58,13 +58,13 @@ class SpatialGraph(nx.Graph):
             if start_point.equals(positions[node1]) and end_point.equals(
                 positions[node2]
             ):
-                undirected_graph.add_edge(node1, node2, pixels=edge_pixels)
-                undirected_graph.add_edge(node2, node1, pixels=edge_pixels.reverse())
+                directed_graph.add_edge(node1, node2, pixels=edge_pixels)
+                directed_graph.add_edge(node2, node1, pixels=edge_pixels.reverse())
             elif start_point.equals(positions[node2]) and end_point.equals(
                 positions[node1]
             ):
-                undirected_graph.add_edge(node2, node1, pixels=edge_pixels)
-                undirected_graph.add_edge(node1, node2, pixels=edge_pixels.reverse())
+                directed_graph.add_edge(node2, node1, pixels=edge_pixels)
+                directed_graph.add_edge(node1, node2, pixels=edge_pixels.reverse())
             else:
                 raise AssertionError(
                     f"Edge({node1}, {node2}) pixels don't match it's nodes:"
@@ -72,8 +72,8 @@ class SpatialGraph(nx.Graph):
                     f"\nnodes: {node1}: {positions[node1]}, {node2}: {positions[node2]}"
                 )
 
-        nx.set_node_attributes(undirected_graph, positions, "position")
-        return undirected_graph
+        nx.set_node_attributes(directed_graph, positions, "position")
+        return directed_graph
 
     def edge_pixels(self, node1: int, node2: int) -> LineString:
         """Return the pixel list from node1 to node2
@@ -90,7 +90,7 @@ class SpatialGraph(nx.Graph):
         LineString
             The line from node1 to node2
         """
-        return self.undirected_graph[node1][node2]["pixels"]
+        return self.directed_graph[node1][node2]["pixels"]
 
     def node_position(self, node: int) -> Point:
         """Return the position of a node
