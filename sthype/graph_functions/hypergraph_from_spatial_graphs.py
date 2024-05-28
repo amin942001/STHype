@@ -94,58 +94,14 @@ def graph_segmentation(
         and there initial edge attributes as a dict.
         Node have attribute position
     """
-    label: int = max(spatial_graph.nodes) + 1
-    graph_segmented = nx.Graph()
-
-    nodes_position: dict[int, Point] = {}
-
-    node1: int
-    node2: int
     edges_to_contract: list[tuple[int, int]] = []
-    for node1, node2, edge_data in spatial_graph.edges(data=True):
-        pixels = spatial_graph.edge_pixels(node1, node2)
-        new_nodes_amount = int(-(-pixels.length // segments_length) + 1)
-        node_interpolation_positions = (
-            i * (pixels.length / (new_nodes_amount - 1))
-            for i in range(new_nodes_amount)
-        )
-        edge_interpolation_positions = (
-            (i + 0.5) * (pixels.length / (new_nodes_amount - 1))
-            for i in range(new_nodes_amount - 1)
-        )
-        new_nodes: list[Point] = [
-            pixels.line_interpolate_point(position)
-            for position in node_interpolation_positions
-        ]
-        new_edges_center: list[Point] = [
-            pixels.line_interpolate_point(position)
-            for position in edge_interpolation_positions
-        ]
-        if len(new_edges_center) == 1:
-            edges_to_contract.append((node1, node2))
+    directed_graph = spatial_graph.directed_graph.copy()
+    nodes_position: dict[int, Point] = spatial_graph.positions
+    for edge in spatial_graph.edges:
+        pixels = spatial_graph.edge_pixels(*edge)
+        if pixels.length < segments_length:
+            edges_to_contract.append(edge)
 
-        for index, center in enumerate(new_edges_center):
-            start, end = label - 1, label
-            if index == 0:
-                start = node1
-            if index == len(new_edges_center) - 1:
-                end = node2
-            initial_edge_attributes = {
-                k: v for k, v in edge_data.items() if k != "pixels"
-            }
-            graph_segmented.add_edge(
-                start,
-                end,
-                center=center,
-                initial_edge={node1, node2},
-                initial_edge_attributes=initial_edge_attributes,
-            )
-            nodes_position[start] = new_nodes[index]
-            nodes_position[end] = new_nodes[index + 1]
-            label += 1
-    nx.set_node_attributes(graph_segmented, nodes_position, "position")
-
-    nodes_remapping = {node: node for node in spatial_graph}
     while edges_to_contract:
         edge_stack = [edges_to_contract.pop()]
         edges_group_to_contract = []
@@ -169,25 +125,69 @@ def graph_segmentation(
             )
         )
         points = MultiPoint([nodes_position[node] for node in nodes_group_to_contract])
-        new_node = max(graph_segmented.nodes) + 1
-        graph_segmented.add_node(new_node, position=points.centroid)
+        new_node = max(directed_graph.nodes) + 1
+        directed_graph.add_node(new_node, position=points.centroid)
         for node in nodes_group_to_contract:
             nx.contracted_nodes(
-                graph_segmented, new_node, node, self_loops=False, copy=False
+                directed_graph, new_node, node, self_loops=False, copy=False
             )
-            nodes_remapping[node] = new_node
 
-    edges_to_remove = []
-    for node1, node2, edge_data in graph_segmented.edges(data=True):
-        node_initial1, node_initial2 = edge_data["initial_edge"]
-        if nodes_remapping[node_initial1] == nodes_remapping[node_initial2]:
-            edges_to_remove.append((node1, node2))
-        else:
-            graph_segmented[node1][node2]["initial_edge"] = {
-                nodes_remapping[node_initial1],
-                nodes_remapping[node_initial2],
+    graph_segmented = nx.Graph()
+    label: int = max(directed_graph.nodes) + 1
+    viewed_edges: set[(int, int)] = set()
+
+    for node1, node2, edge_data in directed_graph.edges(data=True):
+        if (node2, node1) in viewed_edges:
+            continue
+        viewed_edges.add((node1, node2))
+        pixels = directed_graph[node1][node2]["pixels"]
+        new_nodes_amount = int(-(-pixels.length // segments_length) + 1)
+        node_interpolation_positions = [
+            i * (pixels.length / (new_nodes_amount - 1))
+            for i in range(new_nodes_amount)
+        ]
+        edge_interpolation_positions = (
+            (i + 0.5) * (pixels.length / (new_nodes_amount - 1))
+            for i in range(new_nodes_amount - 1)
+        )
+        new_nodes: list[Point] = [
+            pixels.line_interpolate_point(position)
+            for position in node_interpolation_positions
+        ]
+        new_edges_center: list[Point] = [
+            pixels.line_interpolate_point(position)
+            for position in edge_interpolation_positions
+        ]
+        lengths = [
+            p2 - p1
+            for p1, p2 in zip(
+                node_interpolation_positions[:-1], node_interpolation_positions[1:]
+            )
+        ]
+
+        for index, center in enumerate(new_edges_center):
+            start, end = label - 1, label
+            if index == 0:
+                start = node1
+            if index == len(new_edges_center) - 1:
+                end = node2
+            initial_edge_attributes = {
+                k: v for k, v in edge_data.items() if k != "pixels"
             }
-    graph_segmented.remove_edges_from(edges_to_remove)
+            graph_segmented.add_edge(
+                start,
+                end,
+                center=center,
+                length=lengths[index],
+                initial_edge={node1, node2},
+                initial_edge_attributes=initial_edge_attributes,
+            )
+            nodes_position[start] = new_nodes[index]
+            nodes_position[end] = new_nodes[index + 1]
+            label += 1
+    initial_nodes_position = nx.get_node_attributes(directed_graph, "position")
+    nodes_position.update(initial_nodes_position)
+    nx.set_node_attributes(graph_segmented, nodes_position, "position")
 
     return graph_segmented
 
