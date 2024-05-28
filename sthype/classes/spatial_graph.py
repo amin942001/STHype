@@ -54,17 +54,26 @@ class SpatialGraph(nx.Graph):
 
             boundaries: tuple[Point, Point] = edge_pixels.boundary.geoms
             start_point, end_point = boundaries
+            edge_attributes = {k: v for k, v in edge_data.items() if k != "pixels"}
 
             if start_point.equals(positions[node1]) and end_point.equals(
                 positions[node2]
             ):
-                directed_graph.add_edge(node1, node2, pixels=edge_pixels)
-                directed_graph.add_edge(node2, node1, pixels=edge_pixels.reverse())
+                directed_graph.add_edge(
+                    node1, node2, pixels=edge_pixels, **edge_attributes
+                )
+                directed_graph.add_edge(
+                    node2, node1, pixels=edge_pixels.reverse(), **edge_attributes
+                )
             elif start_point.equals(positions[node2]) and end_point.equals(
                 positions[node1]
             ):
-                directed_graph.add_edge(node2, node1, pixels=edge_pixels)
-                directed_graph.add_edge(node1, node2, pixels=edge_pixels.reverse())
+                directed_graph.add_edge(
+                    node2, node1, pixels=edge_pixels, **edge_attributes
+                )
+                directed_graph.add_edge(
+                    node1, node2, pixels=edge_pixels.reverse(), **edge_attributes
+                )
             else:
                 raise AssertionError(
                     f"Edge({node1}, {node2}) pixels don't match it's nodes:"
