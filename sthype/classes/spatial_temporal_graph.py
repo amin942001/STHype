@@ -49,8 +49,6 @@ class SpatialTemporalGraph(nx.Graph):
             self.get_hyperedges_initial_edges()
         )
         self.correct_activations_post_hyperedge(smoothing=2 * smoothing - 1)
-        self._directed_graph_gathered = False
-        self.directed_graph = self.get_directed_graph()
 
     def get_max_age(self) -> int:
         """Return the maximum activation in edges
@@ -393,9 +391,6 @@ class SpatialTemporalGraph(nx.Graph):
         nx.DiGraph
             The directed graph
         """
-        if self._directed_graph_gathered:
-            return self.directed_graph
-
         di_graph = nx.DiGraph()
         for initial_edges in self.hyperedges_initial_edges.values():
             left_edge = self.get_initial_edge_edges(*initial_edges[0])[0]
