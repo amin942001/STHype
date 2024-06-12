@@ -77,6 +77,18 @@ def plot_spatial_temporal_graph(
         colors = [
             colors_dict[stg[node1][node2]["hyperedge"]] for node1, node2 in edgelist
         ]
+    elif color_group == "width":
+        widths = [
+            stg[node1][node2]["initial_edge_attributes"]["width"]
+            for node1, node2 in edgelist
+        ]
+        max_width = max(widths)
+        min_width = min(widths)
+        print(max_width, min_width)
+        colors = [
+            cm.viridis((width - min_width) / (max_width - min_width))
+            for width in widths
+        ]
     elif isinstance(color_group, int):
         colors = [
             "red" if stg[node1][node2]["hyperedge"] == color_group else "blue"
