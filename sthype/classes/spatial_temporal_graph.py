@@ -537,14 +537,15 @@ class SpatialTemporalGraph(nx.Graph):
                 attributes = {}
                 for node1, node2 in edges:
                     if self[node1][node2]["post_hyperedge_activation"] != activation:
-                        graph.add_edge(
-                            begin,
-                            end,
-                            pixels=pixels,
-                            activation=activation,
-                            hyperedge=hyperedge,
-                            attributes=attributes,
-                        )
+                        if activation <= time:
+                            graph.add_edge(
+                                begin,
+                                end,
+                                pixels=pixels,
+                                activation=activation,
+                                hyperedge=hyperedge,
+                                attributes=attributes,
+                            )
                         activation = self[node1][node2]["post_hyperedge_activation"]
                         begin = node1
                         pixels: list[Point] = [self.positions[begin]]
@@ -554,14 +555,15 @@ class SpatialTemporalGraph(nx.Graph):
                         if key != "pixels":
                             attributes.setdefault(key, []).append(value)
                     pixels.append(self.positions[node2])
-                graph.add_edge(
-                    begin,
-                    end,
-                    pixels=pixels,
-                    activation=activation,
-                    hyperedge=hyperedge,
-                    attributes=attributes,
-                )
+                if activation <= time:
+                    graph.add_edge(
+                        begin,
+                        end,
+                        pixels=pixels,
+                        activation=activation,
+                        hyperedge=hyperedge,
+                        attributes=attributes,
+                    )
         nx.set_node_attributes(graph, self.positions, "position")
 
         return graph
