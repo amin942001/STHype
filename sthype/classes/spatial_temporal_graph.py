@@ -397,11 +397,9 @@ class SpatialTemporalGraph(nx.Graph):
             right_edge = self.get_initial_edge_edges(*initial_edges[-1])[-1]
             left_time = self[left_edge[0]][left_edge[1]]["post_hyperedge_activation"]
             right_time = self[right_edge[0]][right_edge[1]]["post_hyperedge_activation"]
-            if left_time < right_time or (
-                left_time == right_time
-                and self.degree[self.get_initial_edge_edges(*initial_edges[-1])[-1][1]]
-                <= self.degree[self.get_initial_edge_edges(*initial_edges[0])[0][0]]
-            ):
+            if left_time == right_time:
+                continue
+            if left_time < right_time:
                 for node1, node2 in initial_edges:
                     di_graph.add_edge(node1, node2, **self.initial_graph[node1][node2])
             else:
@@ -539,14 +537,15 @@ class SpatialTemporalGraph(nx.Graph):
                 attributes = {}
                 for node1, node2 in edges:
                     if self[node1][node2]["post_hyperedge_activation"] != activation:
-                        graph.add_edge(
-                            begin,
-                            end,
-                            pixels=pixels,
-                            activation=activation,
-                            hyperedge=hyperedge,
-                            attributes=attributes,
-                        )
+                        if activation <= time:
+                            graph.add_edge(
+                                begin,
+                                end,
+                                pixels=pixels,
+                                activation=activation,
+                                hyperedge=hyperedge,
+                                attributes=attributes,
+                            )
                         activation = self[node1][node2]["post_hyperedge_activation"]
                         begin = node1
                         pixels: list[Point] = [self.positions[begin]]
@@ -556,13 +555,15 @@ class SpatialTemporalGraph(nx.Graph):
                         if key != "pixels":
                             attributes.setdefault(key, []).append(value)
                     pixels.append(self.positions[node2])
-                graph.add_edge(
-                    begin,
-                    end,
-                    pixels=pixels,
-                    activation=activation,
-                    attributes=attributes,
-                )
+                if activation <= time:
+                    graph.add_edge(
+                        begin,
+                        end,
+                        pixels=pixels,
+                        activation=activation,
+                        hyperedge=hyperedge,
+                        attributes=attributes,
+                    )
         nx.set_node_attributes(graph, self.positions, "position")
 
         return graph
