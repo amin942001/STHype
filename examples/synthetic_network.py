@@ -16,14 +16,14 @@ from matplotlib.patches import Circle
 from PIL import Image
 
 # Dimensions of virtual plate
-xmin = -5
-xmax = 5
+xmin = -260
+xmax = 260
 ymin = 0
-ymax = 10
+ymax = 260
 
 
 # Network occupancy grids
-g_res = 5  # grid resolution per unit distance
+g_res = 1  # grid resolution per unit distance
 g_rows = (ymax - ymin) * g_res  # number of grid rows
 g_cols = (xmax - xmin) * g_res  # number of grid columns
 fungus_grid = np.zeros([g_rows, g_cols], dtype=np.int32)  # fungus occupancy grid
@@ -33,12 +33,13 @@ grids = {"fungus": fungus_grid, "obstacle": obstacle_grid}
 
 # Growth parameters
 dir_var = 0.1  # variance in directional change
-dldt = 0.2  # rate of growth
-p_extend = 0.6  # probability that a tip will extend
-p_split = 0.15  # probabiity that a tip will split into two tips
+dldt = 1  # rate of growth
+p_extend = 1  # probability that a tip will extend
+p_split = dldt * 28 / 100  # probabiity that a tip will split into two tips
 split_angle = 0.4  # angle between newly split segments
-max_delay_split = 5  # delay after which a node can start to grow
-maxnodes = 1000
+max_delay_split = 8  # delay after which a node can start to grow
+maxnodes = 10000
+
 
 
 # ========================
@@ -98,6 +99,7 @@ def in_grid(row, col):
 
 def add_seg(network, node, hyperedge, end_coords, t):
     """Add a segment from node to a new point with coordinates end_coords."""
+
     conn = network["conn"]
     conn_hyperedge = network["conn_hyperedge"]
     coords = network["coords"]
@@ -211,6 +213,10 @@ def split_tip(
             old_node = fungus_grid[row, col]
             network = make_self_connection(network, tip_node, hyperedge, old_node, t)
             delete = True  # tip node to be deleted
+        else:
+            return (network, tip_dels, directions, grids)
+    else:
+        return (network, tip_dels, directions, grids)
     # New node with new tip
     split_angle_direction = -2 if np.random.rand() > 0.5 else 2
     angle = np.random.normal(split_angle, dir_var)
@@ -233,6 +239,7 @@ def split_tip(
             fungus_grid[row, col] = new_node_no2  # update grid
         elif (
             fungus_grid[row, col] != tip_node
+            and fungus_grid[row, col] != network["nnodes"] - 1
         ):  # self-connect if cell occupied by another node
             old_node = fungus_grid[row, col]
             new_node_no2 = network["nnodes"]  # new tip's node no. is nnodes
