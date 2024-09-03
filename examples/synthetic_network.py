@@ -41,7 +41,6 @@ max_delay_split = 8  # delay after which a node can start to grow
 maxnodes = 10000
 
 
-
 # ========================
 # UTILITIES
 # ========================
@@ -557,7 +556,7 @@ def plot_network(network, tip_nodes):
         xfrom = coords[i, 0]
         yfrom = coords[i, 1]
         for j in range(nnodes):
-            if conn[i, j] == 1:
+            if conn[i, j] != 0:
                 xto = coords[j, 0]
                 yto = coords[j, 1]
                 ax.plot([xfrom, xto], [yfrom, yto], color="green", linewidth=1)
@@ -582,7 +581,7 @@ def plot_network_frame(network, tip_nodes):
         xfrom = coords[i, 0]
         yfrom = coords[i, 1]
         for j in range(nnodes):
-            if conn[i, j] == 1:
+            if conn[i, j] != 0:
                 xto = coords[j, 0]
                 yto = coords[j, 1]
                 ax.plot([xfrom, xto], [yfrom, yto], color="green", linewidth=1)
@@ -613,7 +612,7 @@ def plot_carbon_frame(
         xfrom = coords[i, 0]
         yfrom = coords[i, 1]
         for j in range(nnodes):
-            if conn[i, j] == 1:
+            if conn[i, j] != 0:
                 xto = coords[j, 0]
                 yto = coords[j, 1]
                 ax.plot([xfrom, xto], [yfrom, yto], color="lime", linewidth=1)
